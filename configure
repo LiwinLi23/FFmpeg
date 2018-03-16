@@ -1,11 +1,4 @@
 #!/bin/sh
-#
-# FFmpeg configure script
-#
-# Copyright (c) 2000-2002 Fabrice Bellard
-# Copyright (c) 2005-2008 Diego Biurrun
-# Copyright (c) 2005-2008 Mans Rullgard
-#
 
 # Prevent locale nonsense from breaking basic text processing.
 LC_ALL=C
@@ -1478,6 +1471,7 @@ cp_if_changed(){
 
 # CONFIG_LIST contains configurable options, while HAVE_LIST is for
 # system-dependent things.
+echo "Line: 1474"
 
 AVCODEC_COMPONENTS="
     bsfs
