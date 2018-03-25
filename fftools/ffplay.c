@@ -101,9 +101,9 @@ typedef struct PacketQueue {
     SDL_cond *cond;
 } PacketQueue;
 
-#define VIDEO_PICTURE_QUEUE_SIZE 3
-#define SUBPICTURE_QUEUE_SIZE 16
-#define SAMPLE_QUEUE_SIZE 9
+#define VIDEO_PICTURE_QUEUE_SIZE 30
+#define SUBPICTURE_QUEUE_SIZE 160
+#define SAMPLE_QUEUE_SIZE 90
 #define FRAME_QUEUE_SIZE FFMAX(SAMPLE_QUEUE_SIZE, FFMAX(VIDEO_PICTURE_QUEUE_SIZE, SUBPICTURE_QUEUE_SIZE))
 
 typedef struct AudioParams {
@@ -282,7 +282,7 @@ typedef struct VideoState {
 } VideoState;
 
 /* options specified by the user */
-static AVInputFormat *file_iformat;
+static AVInputFormat* file_iformat;
 static const char *input_filename;
 static const char *window_title;
 static int default_width  = 640;
@@ -2781,8 +2781,9 @@ static int read_thread(void *arg)
 
     is->max_frame_duration = (ic->iformat->flags & AVFMT_TS_DISCONT) ? 10.0 : 3600.0;
 
-    if (!window_title && (t = av_dict_get(ic->metadata, "title", NULL, 0)))
-        window_title = av_asprintf("%s - %s", t->value, input_filename);
+    if (!window_title && (t = av_dict_get(ic->metadata, "title", NULL, 0))) {
+        ; // window_title = av_asprintf("%s - %s", t->value, input_filename);
+    }
 
     /* if seeking requested, we execute it */
     if (start_time != AV_NOPTS_VALUE) {
@@ -3018,9 +3019,8 @@ static int read_thread(void *arg)
     return 0;
 }
 
-static VideoState *stream_open(const char *filename, AVInputFormat *iformat)
-{
-    VideoState *is;
+static VideoState *stream_open(const char* filename, AVInputFormat* iformat) {
+    VideoState* is;
 
     is = av_mallocz(sizeof(VideoState));
     if (!is)
@@ -3029,8 +3029,7 @@ static VideoState *stream_open(const char *filename, AVInputFormat *iformat)
     if (!is->filename)
         goto fail;
     is->iformat = iformat;
-    is->ytop    = 0;
-    is->xleft   = 0;
+    is->ytop     =  is->xleft = 0;
 
     /* start video display */
     if (frame_queue_init(&is->pictq, &is->videoq, VIDEO_PICTURE_QUEUE_SIZE, 1) < 0)
@@ -3433,13 +3432,14 @@ static int opt_height(void *optctx, const char *opt, const char *arg)
     return 0;
 }
 
-static int opt_format(void *optctx, const char *opt, const char *arg)
-{
+static int opt_format(void* optctx, const char* opt, const char* arg) {
+    av_log(NULL, AV_LOG_INFO, "+ %s(opt: %s, arg: %s)\n", __FUNCTION__, opt, arg);
     file_iformat = av_find_input_format(arg);
     if (!file_iformat) {
         av_log(NULL, AV_LOG_FATAL, "Unknown input format: %s\n", arg);
         return AVERROR(EINVAL);
     }
+
     return 0;
 }
 
@@ -3684,6 +3684,7 @@ int main(int argc, char** argv) {
             flags |= SDL_WINDOW_BORDERLESS;
         else
             flags |= SDL_WINDOW_RESIZABLE;
+
         window = SDL_CreateWindow(program_name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, default_width, default_height, flags);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
         if (window) {
@@ -3703,6 +3704,8 @@ int main(int argc, char** argv) {
         }
     }
 
+    char const* pMyFileName = input_filename;
+    av_log(NULL, AV_LOG_FATAL, "Open %s\n", pMyFileName);
     is = stream_open(input_filename, file_iformat);
     if (!is) {
         av_log(NULL, AV_LOG_FATAL, "Failed to initialize VideoState!\n");
