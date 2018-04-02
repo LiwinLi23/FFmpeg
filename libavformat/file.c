@@ -199,13 +199,13 @@ static int file_move(URLContext *h_src, URLContext *h_dst)
 
 #if CONFIG_FILE_PROTOCOL
 
-static int file_open(URLContext *h, const char *filename, int flags)
-{
+static int file_open(URLContext *h, const char *filename, int flags) {
     FileContext *c = h->priv_data;
     int access;
     int fd;
     struct stat st;
 
+    av_log(NULL, AV_LOG_WARNING, "+ %s(%s)\n", __FUNCTION__, filename);
     av_strstart(filename, "file:", &filename);
 
     if (flags & AVIO_FLAG_WRITE && flags & AVIO_FLAG_READ) {

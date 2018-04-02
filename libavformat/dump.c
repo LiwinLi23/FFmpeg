@@ -130,10 +130,13 @@ static void print_fps(double d, const char *postfix)
         av_log(NULL, AV_LOG_INFO, "%1.0fk %s", d / 1000, postfix);
 }
 
-static void dump_metadata(void *ctx, AVDictionary *m, const char *indent)
-{
+static void dump_metadata(void* ctx, AVDictionary* m, const char* indent) {
+	av_log(NULL, AV_LOG_WARNING, "\t Metadata count: %d\n", av_dict_count(m));
+	AVDictionaryEntry* languageEntry = av_dict_get(m, "language", NULL, 0);
+	if (languageEntry) av_log(NULL, AV_LOG_WARNING, "\t Language: %s\n", languageEntry->value);
+
     if (m && !(av_dict_count(m) == 1 && av_dict_get(m, "language", NULL, 0))) {
-        AVDictionaryEntry *tag = NULL;
+        AVDictionaryEntry* tag = NULL;
 
         av_log(ctx, AV_LOG_INFO, "%sMetadata:\n", indent);
         while ((tag = av_dict_get(m, "", tag, AV_DICT_IGNORE_SUFFIX)))
@@ -449,10 +452,7 @@ static void dump_sidedata(void *ctx, AVStream *st, const char *indent)
     }
 }
 
-/* "user interface" functions */
-static void dump_stream_format(AVFormatContext *ic, int i,
-                               int index, int is_output)
-{
+static void dump_stream_format(AVFormatContext *ic, int i, int index, int is_output) {
     char buf[256];
     int flags = (is_output ? ic->oformat->flags : ic->iformat->flags);
     AVStream *st = ic->streams[i];
@@ -554,15 +554,12 @@ static void dump_stream_format(AVFormatContext *ic, int i,
     dump_sidedata(NULL, st, "    ");
 }
 
-void av_dump_format(AVFormatContext *ic, int index,
-                    const char *url, int is_output)
-{
+void av_dump_format(AVFormatContext *ic, int index, const char *url, int is_output) {
     int i;
-    uint8_t *printed = ic->nb_streams ? av_mallocz(ic->nb_streams) : NULL;
-    if (ic->nb_streams && !printed)
-        return;
+    uint8_t* printed = ic->nb_streams ? av_mallocz(ic->nb_streams) : NULL;
+    if (ic->nb_streams && !printed) return;
 
-    av_log(NULL, AV_LOG_INFO, "%s #%d, %s, %s '%s':\n",
+    av_log(NULL, AV_LOG_WARNING, "%s stream[%d], %s, %s '%s':\n",
            is_output ? "Output" : "Input",
            index,
            is_output ? ic->oformat->name : ic->iformat->name,

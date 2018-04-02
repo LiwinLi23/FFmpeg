@@ -151,11 +151,10 @@ struct AVCodecParserContext *av_stream_get_parser(const AVStream *st)
     return st->parser;
 }
 
-void av_format_inject_global_side_data(AVFormatContext *s)
-{
+void av_format_inject_global_side_data(AVFormatContext* s) {
     int i;
     s->internal->inject_global_side_data = 1;
-    for (i = 0; i < s->nb_streams; i++) {
+    for (i = 0; i < s->nb_streams; ++i) {
         AVStream *st = s->streams[i];
         st->inject_global_side_data = 1;
     }
@@ -1737,8 +1736,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
     return ret;
 }
 
-int av_read_frame(AVFormatContext *s, AVPacket *pkt)
-{
+int av_read_frame(AVFormatContext* s, AVPacket* pkt) {
     const int genpts = s->flags & AVFMT_FLAG_GENPTS;
     int eof = 0;
     int ret;

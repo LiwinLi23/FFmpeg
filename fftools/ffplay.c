@@ -189,7 +189,7 @@ typedef struct VideoState {
     int64_t seek_rel;
     int read_pause_return;
     AVFormatContext *ic;
-    int realtime;
+    int realtime;							// Is realtime flag
 
     Clock audclk;
     Clock vidclk;
@@ -278,7 +278,7 @@ typedef struct VideoState {
 
     int last_video_stream, last_audio_stream, last_subtitle_stream;
 
-    SDL_cond *continue_read_thread;
+    SDL_cond* continue_read_thread;
 } VideoState;
 
 /* options specified by the user */
@@ -2666,8 +2666,7 @@ out:
     return ret;
 }
 
-static int decode_interrupt_cb(void *ctx)
-{
+static int decode_interrupt_cb(void *ctx) {
     VideoState *is = ctx;
     return is->abort_request;
 }
@@ -2679,41 +2678,35 @@ static int stream_has_enough_packets(AVStream *st, int stream_id, PacketQueue *q
            queue->nb_packets > MIN_FRAMES && (!queue->duration || av_q2d(st->time_base) * queue->duration > 1.0);
 }
 
-static int is_realtime(AVFormatContext *s)
-{
-    if(   !strcmp(s->iformat->name, "rtp")
-       || !strcmp(s->iformat->name, "rtsp")
-       || !strcmp(s->iformat->name, "sdp")
-    )
+static int is_realtime(AVFormatContext* s) {
+    if (!strcmp(s->iformat->name, "rtp")    ||
+    		!strcmp(s->iformat->name, "rtsp")  ||
+	    !strcmp(s->iformat->name, "sdp"))					// Session description protocol
         return 1;
 
-    if(s->pb && (   !strncmp(s->url, "rtp:", 4)
-                 || !strncmp(s->url, "udp:", 4)
-                )
-    )
+    if(s->pb && (!strncmp(s->url, "rtp:", 4) || !strncmp(s->url, "udp:", 4)))
         return 1;
+
     return 0;
 }
 
-/* this thread gets the stream from the disk or the network */
-static int read_thread(void *arg)
-{
+static int read_thread(void* arg) {
     VideoState *is = arg;
-    AVFormatContext *ic = NULL;
+    AVFormatContext* ic = NULL;
     int err, i, ret;
     int st_index[AVMEDIA_TYPE_NB];
     AVPacket pkt1, *pkt = &pkt1;
     int64_t stream_start_time;
     int pkt_in_play_range = 0;
     AVDictionaryEntry *t;
-    SDL_mutex *wait_mutex = SDL_CreateMutex();
+    SDL_mutex* wait_mutex = SDL_CreateMutex();
     int scan_all_pmts_set = 0;
     int64_t pkt_ts;
 
+    av_log(NULL, AV_LOG_WARNING, "+++++++++++++++++++++++ Read thread build at: %s %s  +++++++++++++++++++++++++\n", __DATE__, __TIME__);
     if (!wait_mutex) {
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateMutex(): %s\n", SDL_GetError());
-        ret = AVERROR(ENOMEM);
-        goto fail;
+        ret = AVERROR(ENOMEM); goto fail;
     }
 
     memset(st_index, -1, sizeof(st_index));
@@ -2725,31 +2718,32 @@ static int read_thread(void *arg)
     ic = avformat_alloc_context();
     if (!ic) {
         av_log(NULL, AV_LOG_FATAL, "Could not allocate context.\n");
-        ret = AVERROR(ENOMEM);
-        goto fail;
+        ret = AVERROR(ENOMEM); goto fail;
     }
+
     ic->interrupt_callback.callback = decode_interrupt_cb;
     ic->interrupt_callback.opaque = is;
+    av_log(NULL, AV_LOG_WARNING, "LT disable the scan all pmts\n");
+#if 0
     if (!av_dict_get(format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE)) {
         av_dict_set(&format_opts, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
         scan_all_pmts_set = 1;
     }
+#endif
+
+    av_log(NULL, AV_LOG_WARNING, "\t Try to open input \n");
     err = avformat_open_input(&ic, is->filename, is->iformat, &format_opts);
-    if (err < 0) {
-        print_error(is->filename, err);
-        ret = -1;
-        goto fail;
-    }
+    if (err < 0) { print_error(is->filename, err); ret = -1; goto fail; }
+
     if (scan_all_pmts_set)
         av_dict_set(&format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
 
     if ((t = av_dict_get(format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
         av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
-        ret = AVERROR_OPTION_NOT_FOUND;
-        goto fail;
+        ret = AVERROR_OPTION_NOT_FOUND; goto fail;
     }
-    is->ic = ic;
 
+    is->ic = ic;
     if (genpts)
         ic->flags |= AVFMT_FLAG_GENPTS;
 
@@ -2758,18 +2752,14 @@ static int read_thread(void *arg)
     if (find_stream_info) {
         AVDictionary **opts = setup_find_stream_info_opts(ic, codec_opts);
         int orig_nb_streams = ic->nb_streams;
-
         err = avformat_find_stream_info(ic, opts);
-
         for (i = 0; i < orig_nb_streams; i++)
             av_dict_free(&opts[i]);
-        av_freep(&opts);
 
+        av_freep(&opts);
         if (err < 0) {
-            av_log(NULL, AV_LOG_WARNING,
-                   "%s: could not find codec parameters\n", is->filename);
-            ret = -1;
-            goto fail;
+            av_log(NULL, AV_LOG_WARNING, "%s: could not find codec parameters\n", is->filename);
+            ret = -1; goto fail;
         }
     }
 
@@ -2787,9 +2777,7 @@ static int read_thread(void *arg)
 
     /* if seeking requested, we execute it */
     if (start_time != AV_NOPTS_VALUE) {
-        int64_t timestamp;
-
-        timestamp = start_time;
+        int64_t timestamp = start_time;
         /* add the stream start time */
         if (ic->start_time != AV_NOPTS_VALUE)
             timestamp += ic->start_time;
@@ -2801,11 +2789,10 @@ static int read_thread(void *arg)
     }
 
     is->realtime = is_realtime(ic);
+    av_log(NULL, AV_LOG_WARNING, "\t Dump format info\n");
+    if (show_status) av_dump_format(ic, 0, is->filename, 0);
 
-    if (show_status)
-        av_dump_format(ic, 0, is->filename, 0);
-
-    for (i = 0; i < ic->nb_streams; i++) {
+    for (i = 0; i < ic->nb_streams; ++i) {
         AVStream *st = ic->streams[i];
         enum AVMediaType type = st->codecpar->codec_type;
         st->discard = AVDISCARD_ALL;
@@ -2813,7 +2800,7 @@ static int read_thread(void *arg)
             if (avformat_match_stream_specifier(ic, st, wanted_stream_spec[type]) > 0)
                 st_index[type] = i;
     }
-    for (i = 0; i < AVMEDIA_TYPE_NB; i++) {
+    for (i = 0; i < AVMEDIA_TYPE_NB; ++i) {
         if (wanted_stream_spec[i] && st_index[i] == -1) {
             av_log(NULL, AV_LOG_ERROR, "Stream specifier %s does not match any %s stream\n", wanted_stream_spec[i], av_get_media_type_string(i));
             st_index[i] = INT_MAX;
@@ -2875,8 +2862,8 @@ static int read_thread(void *arg)
         infinite_buffer = 1;
 
     for (;;) {
-        if (is->abort_request)
-            break;
+        if (is->abort_request) break;
+
         if (is->paused != is->last_paused) {
             is->last_paused = is->paused;
             if (is->paused)
@@ -2963,6 +2950,7 @@ static int read_thread(void *arg)
                 goto fail;
             }
         }
+
         ret = av_read_frame(ic, pkt);
         if (ret < 0) {
             if ((ret == AVERROR_EOF || avio_feof(ic->pb)) && !is->eof) {
@@ -2983,14 +2971,14 @@ static int read_thread(void *arg)
         } else {
             is->eof = 0;
         }
-        /* check if packet is in play range specified by user, then queue, otherwise discard */
+
         stream_start_time = ic->streams[pkt->stream_index]->start_time;
         pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
-        pkt_in_play_range = duration == AV_NOPTS_VALUE ||
+        pkt_in_play_range = (duration == AV_NOPTS_VALUE) || (
                 (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
                 av_q2d(ic->streams[pkt->stream_index]->time_base) -
                 (double)(start_time != AV_NOPTS_VALUE ? start_time : 0) / 1000000
-                <= ((double)duration / 1000000);
+                <= ((double)duration / 1000000));
         if (pkt->stream_index == is->audio_stream && pkt_in_play_range) {
             packet_queue_put(&is->audioq, pkt);
         } else if (pkt->stream_index == is->video_stream && pkt_in_play_range
@@ -3020,23 +3008,21 @@ static int read_thread(void *arg)
 }
 
 static VideoState *stream_open(const char* filename, AVInputFormat* iformat) {
-    VideoState* is;
+    VideoState* is = av_mallocz(sizeof(VideoState));
+    if (NULL == is) return NULL;
 
-    is = av_mallocz(sizeof(VideoState));
-    if (!is)
-        return NULL;
     is->filename = av_strdup(filename);
-    if (!is->filename)
-        goto fail;
+    if (!is->filename) goto fail;
+
     is->iformat = iformat;
     is->ytop     =  is->xleft = 0;
 
     /* start video display */
     if (frame_queue_init(&is->pictq, &is->videoq, VIDEO_PICTURE_QUEUE_SIZE, 1) < 0)
         goto fail;
-    if (frame_queue_init(&is->subpq, &is->subtitleq, SUBPICTURE_QUEUE_SIZE, 0) < 0)
-        goto fail;
     if (frame_queue_init(&is->sampq, &is->audioq, SAMPLE_QUEUE_SIZE, 1) < 0)
+            goto fail;
+    if (frame_queue_init(&is->subpq, &is->subtitleq, SUBPICTURE_QUEUE_SIZE, 0) < 0)
         goto fail;
 
     if (packet_queue_init(&is->videoq) < 0 ||
@@ -3069,6 +3055,7 @@ fail:
         stream_close(is);
         return NULL;
     }
+
     return is;
 }
 
@@ -3620,6 +3607,7 @@ int main(int argc, char** argv) {
     int flags;
     VideoState *is;
 
+    av_log(NULL, AV_LOG_WARNING, "++++++++++++++++++++++ LTPlayer build at: %s %s +++++++++++++++++++++++++++++++\n", __DATE__, __TIME__);
     init_dynload();
 
     av_log_set_flags(AV_LOG_SKIP_REPEATED);
@@ -3716,3 +3704,14 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+#if 0
+http://playertest.longtailvideo.com/adaptive/bipbop/gear4/prog_index.m3u8
+http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8
+http://devimages.apple.com/iphone/samples/bipbop/gear1/prog_index.m3u8
+http://live.hkstv.hk.lxdns.com/live/hks/playlist.m3u8
+
+rtmp://live.hkstv.hk.lxdns.com/live/hks
+
+rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov
+#endif
