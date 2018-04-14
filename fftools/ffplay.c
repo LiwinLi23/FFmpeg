@@ -3710,6 +3710,7 @@ http://playertest.longtailvideo.com/adaptive/bipbop/gear4/prog_index.m3u8
 http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8
 http://devimages.apple.com/iphone/samples/bipbop/gear1/prog_index.m3u8
 http://live.hkstv.hk.lxdns.com/live/hks/playlist.m3u8
+https://dco4urblvsasc.cloudfront.net/811/81095_ywfZjAuP/game/index.m3u8
 
 rtmp://live.hkstv.hk.lxdns.com/live/hks
 

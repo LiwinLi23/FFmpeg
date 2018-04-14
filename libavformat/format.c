@@ -159,6 +159,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened,
         ID3_GREATER_MAX_PROBE,
     } nodat = NO_ID3;
 
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!lpd.buf)
         lpd.buf = (unsigned char *) zerobuffer;
 
@@ -224,6 +225,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened,
 AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int *score_max)
 {
     int score_ret;
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     AVInputFormat *fmt = av_probe_input_format3(pd, is_opened, &score_ret);
     if (score_ret > *score_max) {
         *score_max = score_ret;
@@ -235,6 +237,7 @@ AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int *score
 AVInputFormat *av_probe_input_format(AVProbeData *pd, int is_opened)
 {
     int score = 0;
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     return av_probe_input_format2(pd, is_opened, &score);
 }
 
@@ -248,6 +251,7 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
     int score = 0;
     int ret2;
 
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!max_probe_size)
         max_probe_size = PROBE_BUF_MAX;
     else if (max_probe_size < PROBE_BUF_MIN) {

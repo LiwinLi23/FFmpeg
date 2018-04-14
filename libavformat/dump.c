@@ -568,9 +568,11 @@ void av_dump_format(AVFormatContext *ic, int index, const char *url, int is_outp
 
     if (!is_output) {
         av_log(NULL, AV_LOG_INFO, "  Duration: ");
-        if (ic->duration != AV_NOPTS_VALUE) {
+        if (AV_NOPTS_VALUE != ic->duration) {
             int hours, mins, secs, us;
-            int64_t duration = ic->duration + (ic->duration <= INT64_MAX - 5000 ? 5000 : 0);
+            // LT: Why should be added 5000
+            // int64_t duration = ic->duration + (ic->duration <= INT64_MAX - 5000 ? 5000 : 0);
+            int64_t duration = ic->duration;
             secs  = duration / AV_TIME_BASE;
             us    = duration % AV_TIME_BASE;
             mins  = secs / 60;
@@ -579,14 +581,16 @@ void av_dump_format(AVFormatContext *ic, int index, const char *url, int is_outp
             mins %= 60;
             av_log(NULL, AV_LOG_INFO, "%02d:%02d:%02d.%02d", hours, mins, secs,
                    (100 * us) / AV_TIME_BASE);
-        } else {
-            av_log(NULL, AV_LOG_INFO, "N/A");
         }
-        if (ic->start_time != AV_NOPTS_VALUE) {
+
+        if (AV_NOPTS_VALUE != ic->start_time) {
             int secs, us;
             av_log(NULL, AV_LOG_INFO, ", start: ");
             secs = llabs(ic->start_time / AV_TIME_BASE);
             us   = llabs(ic->start_time % AV_TIME_BASE);
+            av_log(NULL, AV_LOG_WARNING, "\n Duration: %lld ", ic->duration);
+            av_log(NULL, AV_LOG_WARNING, "rescale: duration: %lld\n",
+            		av_rescale(ic->duration, 1000, AV_TIME_BASE));
             av_log(NULL, AV_LOG_INFO, "%s%d.%06d",
                    ic->start_time >= 0 ? "" : "-",
                    secs,
@@ -595,8 +599,7 @@ void av_dump_format(AVFormatContext *ic, int index, const char *url, int is_outp
         av_log(NULL, AV_LOG_INFO, ", bitrate: ");
         if (ic->bit_rate)
             av_log(NULL, AV_LOG_INFO, "%"PRId64" kb/s", ic->bit_rate / 1000);
-        else
-            av_log(NULL, AV_LOG_INFO, "N/A");
+
         av_log(NULL, AV_LOG_INFO, "\n");
     }
 

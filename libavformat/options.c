@@ -103,7 +103,7 @@ static int io_open_default(AVFormatContext *s, AVIOContext **pb,
                            const char *url, int flags, AVDictionary **options)
 {
     int loglevel;
-
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!strcmp(url, s->url) ||
         s->iformat && !strcmp(s->iformat->name, "image2") ||
         s->oformat && !strcmp(s->oformat->name, "image2")

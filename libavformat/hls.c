@@ -216,8 +216,7 @@ typedef struct HLSContext {
     AVIOContext *playlist_pb;
 } HLSContext;
 
-static int read_chomp_line(AVIOContext *s, char *buf, int maxlen)
-{
+static int read_chomp_line(AVIOContext *s, char *buf, int maxlen) {
     int len = ff_get_line(s, buf, maxlen);
     while (len > 0 && av_isspace(buf[len - 1]))
         buf[--len] = '\0';
@@ -728,6 +727,8 @@ static int parse_playlist(HLSContext *c, const char *url,
     struct segment *cur_init_section = NULL;
     int is_http = av_strstart(url, "http", NULL);
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    av_log(NULL, AV_LOG_WARNING, "\t url: \n%s\n", url);
     if (is_http && !in && c->http_persistent && c->playlist_pb) {
         in = c->playlist_pb;
         ret = open_url_keepalive(c->ctx, &c->playlist_pb, url);
@@ -791,11 +792,13 @@ static int parse_playlist(HLSContext *c, const char *url,
     while (!avio_feof(in)) {
         read_chomp_line(in, line, sizeof(line));
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
+        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             is_variant = 1;
             memset(&variant_info, 0, sizeof(variant_info));
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_variant_args,
                                &variant_info);
         } else if (av_strstart(line, "#EXT-X-KEY:", &ptr)) {
+        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct key_info info = {{0}};
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_key_args,
                                &info);
@@ -811,21 +814,25 @@ static int parse_playlist(HLSContext *c, const char *url,
             }
             av_strlcpy(key, info.uri, sizeof(key));
         } else if (av_strstart(line, "#EXT-X-MEDIA:", &ptr)) {
+        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct rendition_info info = {{0}};
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_rendition_args,
                                &info);
             new_rendition(c, &info, url);
         } else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {
-            ret = ensure_playlist(c, &pls, url);
+        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        		ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
             pls->target_duration = strtoll(ptr, NULL, 10) * AV_TIME_BASE;
         } else if (av_strstart(line, "#EXT-X-MEDIA-SEQUENCE:", &ptr)) {
+        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
             pls->start_seq_no = atoi(ptr);
         } else if (av_strstart(line, "#EXT-X-PLAYLIST-TYPE:", &ptr)) {
+            av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
@@ -834,6 +841,7 @@ static int parse_playlist(HLSContext *c, const char *url,
             else if (!strcmp(ptr, "VOD"))
                 pls->type = PLS_TYPE_VOD;
         } else if (av_strstart(line, "#EXT-X-MAP:", &ptr)) {
+        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct init_section_info info = {{0}};
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
@@ -842,17 +850,21 @@ static int parse_playlist(HLSContext *c, const char *url,
                                &info);
             cur_init_section = new_init_section(pls, &info, url);
         } else if (av_strstart(line, "#EXT-X-ENDLIST", &ptr)) {
+        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             if (pls)
                 pls->finished = 1;
         } else if (av_strstart(line, "#EXTINF:", &ptr)) {
+          	av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             is_segment = 1;
             duration   = atof(ptr) * AV_TIME_BASE;
         } else if (av_strstart(line, "#EXT-X-BYTERANGE:", &ptr)) {
+         	av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             seg_size = strtoll(ptr, NULL, 10);
             ptr = strchr(ptr, '@');
             if (ptr)
                 seg_offset = strtoll(ptr+1, NULL, 10);
         } else if (av_strstart(line, "#", NULL)) {
+        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             continue;
         } else if (line[0]) {
             if (is_variant) {
@@ -1784,6 +1796,7 @@ static int hls_close(AVFormatContext *s)
 {
     HLSContext *c = s->priv_data;
 
+    av_log(NULL, AV_LOG_WARNING, "+ %s()", __FUNCTION__);
     free_playlist_list(c);
     free_variant_list(c);
     free_rendition_list(c);
@@ -1794,13 +1807,13 @@ static int hls_close(AVFormatContext *s)
     return 0;
 }
 
-static int hls_read_header(AVFormatContext *s)
-{
+static int hls_read_header(AVFormatContext* s) {
     void *u = (s->flags & AVFMT_FLAG_CUSTOM_IO) ? NULL : s->pb;
     HLSContext *c = s->priv_data;
     int ret = 0, i;
     int highest_cur_seq_no = 0;
 
+    av_log(s, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     c->ctx                = s;
     c->interrupt_callback = &s->interrupt_callback;
     c->strict_std_compliance = s->strict_std_compliance;
@@ -1810,24 +1823,20 @@ static int hls_read_header(AVFormatContext *s)
     c->cur_timestamp = AV_NOPTS_VALUE;
 
     if (u) {
+    		av_log(s, AV_LOG_INFO, "\t Custom IO\n");
         // get the previous user agent & set back to null if string size is zero
         update_options(&c->user_agent, "user_agent", u);
-
         // get the previous cookies & set back to null if string size is zero
         update_options(&c->cookies, "cookies", u);
-
         // get the previous headers & set back to null if string size is zero
         update_options(&c->headers, "headers", u);
-
         // get the previous http proxt & set back to null if string size is zero
         update_options(&c->http_proxy, "http_proxy", u);
     }
 
-    if ((ret = parse_playlist(c, s->url, NULL, s->pb)) < 0)
-        goto fail;
+    if ((ret = parse_playlist(c, s->url, NULL, s->pb)) < 0) goto fail;
 
-    if ((ret = save_avio_options(s)) < 0)
-        goto fail;
+    if ((ret = save_avio_options(s)) < 0)  goto fail;
 
     /* Some HLS servers don't like being sent the range header */
     av_dict_set(&c->avio_opts, "seekable", "0", 0);
@@ -2316,15 +2325,13 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
     return 0;
 }
 
-static int hls_probe(AVProbeData *p)
-{
-    /* Require #EXTM3U at the start, and either one of the ones below
-     * somewhere for a proper match. */
-    if (strncmp(p->buf, "#EXTM3U", 7))
-        return 0;
+static int hls_probe(AVProbeData* p) {
+	av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+	av_log(NULL, AV_LOG_WARNING, "\n%s\n", p->buf);
+    if (strncmp(p->buf, "#EXTM3U", 7)) return 0;
 
-    if (strstr(p->buf, "#EXT-X-STREAM-INF:")     ||
-        strstr(p->buf, "#EXT-X-TARGETDURATION:") ||
+    if (strstr(p->buf, "#EXT-X-STREAM-INF:")     		||
+        strstr(p->buf, "#EXT-X-TARGETDURATION:") 	||
         strstr(p->buf, "#EXT-X-MEDIA-SEQUENCE:"))
         return AVPROBE_SCORE_MAX;
     return 0;

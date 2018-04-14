@@ -196,6 +196,7 @@ static int hls_open(URLContext *h, const char *uri, int flags)
     int ret, i;
     const char *nested_url;
 
+    av_log(NULL, AV_LOG_WARNING, "+ %s(%s)", __FUNCTION__, uri);
     if (flags & AVIO_FLAG_WRITE)
         return AVERROR(ENOSYS);
 

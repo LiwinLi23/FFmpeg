@@ -525,6 +525,7 @@ static int http_open(URLContext *h, const char *uri, int flags,
     HTTPContext *s = h->priv_data;
     int ret;
 
+    av_log(NULL, AV_LOG_WARNING, "+ %s(%s)\n", __FUNCTION__, uri);
     if( s->seekable == 1 )
         h->is_streamed = 0;
     else
