@@ -216,10 +216,11 @@ typedef struct HLSContext {
     AVIOContext *playlist_pb;
 } HLSContext;
 
-static int read_chomp_line(AVIOContext *s, char *buf, int maxlen) {
+static int read_chomp_line(AVIOContext* s, char* buf, int maxlen) {
     int len = ff_get_line(s, buf, maxlen);
     while (len > 0 && av_isspace(buf[len - 1]))
         buf[--len] = '\0';
+
     return len;
 }
 
@@ -727,8 +728,7 @@ static int parse_playlist(HLSContext *c, const char *url,
     struct segment *cur_init_section = NULL;
     int is_http = av_strstart(url, "http", NULL);
 
-    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
-    av_log(NULL, AV_LOG_WARNING, "\t url: \n%s\n", url);
+    av_log(NULL, AV_LOG_INFO, "+ %s() with url: \n%s\n\n", __FUNCTION__, url);
     if (is_http && !in && c->http_persistent && c->playlist_pb) {
         in = c->playlist_pb;
         ret = open_url_keepalive(c->ctx, &c->playlist_pb, url);
@@ -780,8 +780,7 @@ static int parse_playlist(HLSContext *c, const char *url,
 
     read_chomp_line(in, line, sizeof(line));
     if (strcmp(line, "#EXTM3U")) {
-        ret = AVERROR_INVALIDDATA;
-        goto fail;
+        ret = AVERROR_INVALIDDATA;  goto fail;
     }
 
     if (pls) {
@@ -792,7 +791,7 @@ static int parse_playlist(HLSContext *c, const char *url,
     while (!avio_feof(in)) {
         read_chomp_line(in, line, sizeof(line));
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
-        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        	    av_log(NULL, AV_LOG_WARNING, "\n%s\n", line);
             is_variant = 1;
             memset(&variant_info, 0, sizeof(variant_info));
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_variant_args,
@@ -1436,6 +1435,7 @@ reload:
             return AVERROR_EOF;
         if (!v->finished &&
             av_gettime_relative() - v->last_load_time >= reload_interval) {
+        	    av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
             if ((ret = parse_playlist(c, v->url, v, NULL)) < 0) {
                 if (ret != AVERROR_EXIT)
                     av_log(v->parent, AV_LOG_WARNING, "Failed to reload playlist %d\n",
@@ -1635,9 +1635,11 @@ static int select_cur_seq_no(HLSContext *c, struct playlist *pls)
     int seq_no;
 
     if (!pls->finished && !c->first_packet &&
-        av_gettime_relative() - pls->last_load_time >= default_reload_interval(pls))
+        av_gettime_relative() - pls->last_load_time >= default_reload_interval(pls)) {
+    	    av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
         /* reload the playlist since it was suspended */
         parse_playlist(c, pls->url, pls, NULL);
+    }
 
     /* If playback is already in progress (we are just selecting a new
      * playlist) and this is a complete file, find the matching segment
@@ -1834,8 +1836,8 @@ static int hls_read_header(AVFormatContext* s) {
         update_options(&c->http_proxy, "http_proxy", u);
     }
 
+    av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
     if ((ret = parse_playlist(c, s->url, NULL, s->pb)) < 0) goto fail;
-
     if ((ret = save_avio_options(s)) < 0)  goto fail;
 
     /* Some HLS servers don't like being sent the range header */
@@ -1851,6 +1853,7 @@ static int hls_read_header(AVFormatContext* s) {
     if (c->n_playlists > 1 || c->playlists[0]->n_segments == 0) {
         for (i = 0; i < c->n_playlists; i++) {
             struct playlist *pls = c->playlists[i];
+            	av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
             if ((ret = parse_playlist(c, pls->url, pls, NULL)) < 0)
                 goto fail;
         }

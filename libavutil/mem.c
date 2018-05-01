@@ -139,6 +139,7 @@ void *av_realloc(void *ptr, size_t size)
         return NULL;
 
 #if HAVE_ALIGNED_MALLOC
+    fdsafsd
     return _aligned_realloc(ptr, size + !size, ALIGN);
 #else
     return realloc(ptr, size + !size);
@@ -248,15 +249,15 @@ void *av_calloc(size_t nmemb, size_t size)
     return av_mallocz(nmemb * size);
 }
 
-char *av_strdup(const char *s)
-{
-    char *ptr = NULL;
+char* av_strdup(const char* s) {
+    char* ptr = NULL;
     if (s) {
         size_t len = strlen(s) + 1;
         ptr = av_realloc(NULL, len);
         if (ptr)
             memcpy(ptr, s, len);
     }
+
     return ptr;
 }
 

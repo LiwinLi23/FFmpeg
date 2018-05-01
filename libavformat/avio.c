@@ -163,14 +163,16 @@ fail:
     return err;
 }
 
-int ffurl_connect(URLContext *uc, AVDictionary **options)
-{
+int ffurl_connect(URLContext *uc, AVDictionary **options) {
     int err;
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
     av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
-    if (!options)
-        options = &tmp_opts;
+    if (uc) {
+    		if (uc->prot) av_log(NULL, AV_LOG_WARNING, "Protocol name: %s\n", uc->prot->name);
+    }
+
+    if (!options) { options = &tmp_opts; }
 
     // Check that URLContext was initialized correctly and lists are matching if set
     av_assert0(!(e=av_dict_get(*options, "protocol_whitelist", NULL, 0)) ||
@@ -189,13 +191,13 @@ int ffurl_connect(URLContext *uc, AVDictionary **options)
     }
 
     if (!uc->protocol_whitelist && uc->prot->default_whitelist) {
-        av_log(uc, AV_LOG_DEBUG, "Setting default whitelist '%s'\n", uc->prot->default_whitelist);
+        av_log(uc, AV_LOG_INFO, "Setting default whitelist '%s'\n", uc->prot->default_whitelist);
         uc->protocol_whitelist = av_strdup(uc->prot->default_whitelist);
         if (!uc->protocol_whitelist) {
             return AVERROR(ENOMEM);
         }
     } else if (!uc->protocol_whitelist)
-        av_log(uc, AV_LOG_DEBUG, "No default whitelist set\n"); // This should be an error once all declare a default whitelist
+        av_log(uc, AV_LOG_INFO, "No default whitelist set\n"); // This should be an error once all declare a default whitelist
 
     if ((err = av_dict_set(options, "protocol_whitelist", uc->protocol_whitelist, 0)) < 0)
         return err;
@@ -243,34 +245,33 @@ int ffurl_handshake(URLContext *c)
     return 0;
 }
 
-#define URL_SCHEME_CHARS                        \
-    "abcdefghijklmnopqrstuvwxyz"                \
+#define URL_SCHEME_CHARS                           \
+    "abcdefghijklmnopqrstuvwxyz"                      \
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"                \
     "0123456789+-."
 
-static const struct URLProtocol *url_find_protocol(const char *filename)
-{
+static const struct URLProtocol *url_find_protocol(const char *filename) {
     const URLProtocol **protocols;
     char proto_str[128], proto_nested[128], *ptr;
     size_t proto_len = strspn(filename, URL_SCHEME_CHARS);
     int i;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    // av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (filename[proto_len] != ':' &&
-        (strncmp(filename, "subfile,", 8) || !strchr(filename + proto_len + 1, ':')) ||
-        is_dos_path(filename))
+       (strncmp(filename, "subfile,", 8) || !strchr(filename + proto_len + 1, ':')) ||
+       is_dos_path(filename)) {
+    		av_log(NULL, AV_LOG_INFO, "[%s%d]It's local file\n", __FILE__, __LINE__);
         strcpy(proto_str, "file");
-    else
-        av_strlcpy(proto_str, filename,
-                   FFMIN(proto_len + 1, sizeof(proto_str)));
+    } else
+        av_strlcpy(proto_str, filename, FFMIN(proto_len + 1, sizeof(proto_str)));
 
     av_strlcpy(proto_nested, proto_str, sizeof(proto_nested));
     if ((ptr = strchr(proto_nested, '+')))
         *ptr = '\0';
 
     protocols = ffurl_get_protocols(NULL, NULL);
-    if (!protocols)
-        return NULL;
-    for (i = 0; protocols[i]; i++) {
+    if (!protocols) return NULL;
+
+    for (i = 0; protocols[i]; ++i) {
             const URLProtocol *up = protocols[i];
         if (!strcmp(proto_str, up->name)) {
             av_freep(&protocols);
@@ -283,7 +284,6 @@ static const struct URLProtocol *url_find_protocol(const char *filename)
         }
     }
     av_freep(&protocols);
-
     return NULL;
 }
 
@@ -311,7 +311,10 @@ int ffurl_open_whitelist(URLContext **puc, const char *filename, int flags,
 {
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s() marked\n", __FILE__, __FUNCTION__);
+    if (whitelist)  av_log(NULL, AV_LOG_INFO, "whitelist: %s", whitelist);
+    if (blacklist)  av_log(NULL, AV_LOG_INFO, "blacklist: %s", blacklist);
+
     int ret = ffurl_alloc(puc, filename, flags, int_cb);
     if (ret < 0)
         return ret;
@@ -354,8 +357,8 @@ fail:
 }
 
 int ffurl_open(URLContext **puc, const char *filename, int flags,
-               const AVIOInterruptCB *int_cb, AVDictionary **options)
-{
+               const AVIOInterruptCB *int_cb, AVDictionary **options) {
+	av_log(NULL, AV_LOG_INFO, "+ %s()", __FUNCTION__);
     return ffurl_open_whitelist(puc, filename, flags,
                                 int_cb, options, NULL, NULL, NULL);
 }

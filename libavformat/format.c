@@ -222,8 +222,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened,
     return fmt;
 }
 
-AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int *score_max)
-{
+AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int *score_max) {
     int score_ret;
     av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     AVInputFormat *fmt = av_probe_input_format3(pd, is_opened, &score_ret);
@@ -259,6 +258,7 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
                "Specified probe size value %u cannot be < %u\n", max_probe_size, PROBE_BUF_MIN);
         return AVERROR(EINVAL);
     }
+    av_log(NULL, AV_LOG_INFO, "\t Probe buf size: %d\n", max_probe_size);
 
     if (offset >= max_probe_size)
         return AVERROR(EINVAL);

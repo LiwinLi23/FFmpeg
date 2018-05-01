@@ -219,10 +219,8 @@ static inline av_const int av_isgraph(int c)
 /**
  * Locale-independent conversion of ASCII isspace.
  */
-static inline av_const int av_isspace(int c)
-{
-    return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' ||
-           c == '\v';
+static inline av_const int av_isspace(int c) {
+    return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v';
 }
 
 /**

@@ -106,8 +106,7 @@ const char *avio_enum_protocols(void **opaque, int output)
 }
 
 const URLProtocol **ffurl_get_protocols(const char *whitelist,
-                                        const char *blacklist)
-{
+                                        const char *blacklist) {
     const URLProtocol **ret;
     int i, ret_idx = 0;
 

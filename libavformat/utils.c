@@ -412,14 +412,13 @@ int av_demuxer_open(AVFormatContext *ic) {
 }
 
 /* Open input file and probe the format if necessary. */
-static int init_input(AVFormatContext *s, const char *filename,
-                      AVDictionary **options)
-{
+static int init_input(AVFormatContext* s, const char* filename, AVDictionary** options) {
     int ret;
     AVProbeData pd = { filename, NULL, 0 };
     int score = AVPROBE_SCORE_RETRY;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (s->pb) {
+    		av_log(NULL, AV_LOG_INFO, "\t has inited avio\n");
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
         if (!s->iformat)
             return av_probe_input_buffer2(s->pb, &s->iformat, filename,
@@ -431,14 +430,17 @@ static int init_input(AVFormatContext *s, const char *filename,
     }
 
     if ((s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
-        (!s->iformat && (s->iformat = av_probe_input_format2(&pd, 0, &score))))
+        (!s->iformat && (s->iformat = av_probe_input_format2(&pd, 0, &score)))) {
+    		av_log(NULL, AV_LOG_INFO, "\t %d return score: %d\n", __LINE__, score);
         return score;
+    }
 
-    if ((ret = s->io_open(s, &s->pb, filename, AVIO_FLAG_READ | s->avio_flags, options)) < 0)
-        return ret;
+    	if (s->pb) av_log(NULL, AV_LOG_INFO, "\t PB isn't NULL\n");
+    	if (s->iformat) av_log(NULL, AV_LOG_INFO, "\t format isn't NULL\n");
+    if ((ret = s->io_open(s, &s->pb, filename, AVIO_FLAG_READ | s->avio_flags, options)) < 0) return ret;
 
-    if (s->iformat)
-        return 0;
+    if (s->iformat) return 0;
+
     return av_probe_input_buffer2(s->pb, &s->iformat, filename,
                                  s, 0, s->format_probesize);
 }
@@ -528,25 +530,26 @@ FF_ENABLE_DEPRECATION_WARNINGS
 }
 
 
-int avformat_open_input(AVFormatContext **ps, const char *filename,
-                        AVInputFormat *fmt, AVDictionary **options)
-{
-    AVFormatContext *s = *ps;
+int avformat_open_input(AVFormatContext** ps, const char* filename,
+                        AVInputFormat* fmt, AVDictionary** options) {
+    AVFormatContext* s = *ps;
     int i, ret = 0;
-    AVDictionary *tmp = NULL;
+    AVDictionary* tmp = NULL;
     ID3v2ExtraMeta *id3v2_extra_meta = NULL;
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    if (!s && !(s = avformat_alloc_context())) return AVERROR(ENOMEM);
 
-    if (!s && !(s = avformat_alloc_context()))
-        return AVERROR(ENOMEM);
     if (!s->av_class) {
         av_log(NULL, AV_LOG_ERROR, "Input context has not been properly allocated by avformat_alloc_context() and is not NULL either\n");
         return AVERROR(EINVAL);
     }
-    if (fmt)
-        s->iformat = fmt;
 
-    if (options)
+    if (fmt) { s->iformat = fmt; }
+
+    if (options) {
+    		av_log(NULL, AV_LOG_ERROR, "\tCustomize options size: %d\n", av_dict_count(*options));
         av_dict_copy(&tmp, *options, 0);
+    }
 
     if (s->pb) // must be before any goto fail
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
@@ -555,8 +558,7 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
         goto fail;
 
     if (!(s->url = av_strdup(filename ? filename : ""))) {
-        ret = AVERROR(ENOMEM);
-        goto fail;
+        ret = AVERROR(ENOMEM); goto fail;
     }
 
 #if FF_API_FORMAT_FILENAME
@@ -564,8 +566,11 @@ FF_DISABLE_DEPRECATION_WARNINGS
     av_strlcpy(s->filename, filename ? filename : "", sizeof(s->filename));
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
-    if ((ret = init_input(s, filename, &tmp)) < 0)
-        goto fail;
+    av_log(NULL, AV_LOG_ERROR, "\t call init_input\n");
+    if ((ret = init_input(s, filename, &tmp)) < 0) goto fail;
+
+    if (s->iformat) av_log(NULL, AV_LOG_INFO, "[%d] format_name: %s\n\n\n\n", __LINE__, s->iformat->name);
+
     s->probe_score = ret;
 
     if (!s->protocol_whitelist && s->pb && s->pb->protocol_whitelist) {
@@ -619,7 +624,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
     /* e.g. AVFMT_NOFILE formats will not have a AVIOContext */
     if (s->pb)
         ff_id3v2_read_dict(s->pb, &s->internal->id3v2_meta, ID3v2_DEFAULT_MAGIC, &id3v2_extra_meta);
-
 
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->iformat->read_header)
         if ((ret = s->iformat->read_header(s)) < 0)
@@ -1287,7 +1291,7 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
     if (delay == 1 && pkt->dts == pkt->pts &&
         pkt->dts != AV_NOPTS_VALUE && presentation_delayed) {
         av_log(s, AV_LOG_DEBUG, "invalid dts/pts combination %"PRIi64"\n", pkt->dts);
-        if (    strcmp(s->iformat->name, "mov,mp4,m4a,3gp,3g2,mj2")
+        if (strcmp(s->iformat->name, "mov,mp4,m4a,3gp,3g2,mj2")
              && strcmp(s->iformat->name, "flv")) // otherwise we discard correct timestamps for vc1-wmapro.ism
             pkt->dts = AV_NOPTS_VALUE;
     }

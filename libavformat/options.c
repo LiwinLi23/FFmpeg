@@ -20,7 +20,6 @@
 #include "avformat.h"
 #include "avio_internal.h"
 #include "internal.h"
-
 #include "libavutil/internal.h"
 #include "libavutil/opt.h"
 
@@ -100,14 +99,12 @@ static const AVClass av_format_context_class = {
 };
 
 static int io_open_default(AVFormatContext *s, AVIOContext **pb,
-                           const char *url, int flags, AVDictionary **options)
-{
+                           const char *url, int flags, AVDictionary **options) {
     int loglevel;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!strcmp(url, s->url) ||
         s->iformat && !strcmp(s->iformat->name, "image2") ||
-        s->oformat && !strcmp(s->oformat->name, "image2")
-    ) {
+        s->oformat && !strcmp(s->oformat->name, "image2")) {
         loglevel = AV_LOG_DEBUG;
     } else
         loglevel = AV_LOG_INFO;
@@ -129,23 +126,19 @@ static void io_close_default(AVFormatContext *s, AVIOContext *pb)
     avio_close(pb);
 }
 
-static void avformat_get_context_defaults(AVFormatContext *s)
-{
+static void avformat_get_context_defaults(AVFormatContext* s) {
     memset(s, 0, sizeof(AVFormatContext));
-
     s->av_class = &av_format_context_class;
-
-    s->io_open  = io_open_default;
+    s->io_open = io_open_default;
     s->io_close = io_close_default;
-
     av_opt_set_defaults(s);
 }
 
-AVFormatContext *avformat_alloc_context(void)
-{
-    AVFormatContext *ic;
-    ic = av_malloc(sizeof(AVFormatContext));
+AVFormatContext* avformat_alloc_context(void) {
+    AVFormatContext* ic = av_malloc(sizeof(AVFormatContext));
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     if (!ic) return ic;
+
     avformat_get_context_defaults(ic);
 
     ic->internal = av_mallocz(sizeof(*ic->internal));
@@ -153,10 +146,10 @@ AVFormatContext *avformat_alloc_context(void)
         avformat_free_context(ic);
         return NULL;
     }
+
     ic->internal->offset = AV_NOPTS_VALUE;
     ic->internal->raw_packet_buffer_remaining_size = RAW_PACKET_BUFFER_SIZE;
     ic->internal->shortest_end = AV_NOPTS_VALUE;
-
     return ic;
 }
 
