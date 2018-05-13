@@ -416,7 +416,7 @@ static int init_input(AVFormatContext* s, const char* filename, AVDictionary** o
     int ret;
     AVProbeData pd = { filename, NULL, 0 };
     int score = AVPROBE_SCORE_RETRY;
-    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     if (s->pb) {
     		av_log(NULL, AV_LOG_INFO, "\t has inited avio\n");
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
@@ -435,8 +435,7 @@ static int init_input(AVFormatContext* s, const char* filename, AVDictionary** o
         return score;
     }
 
-    	if (s->pb) av_log(NULL, AV_LOG_INFO, "\t PB isn't NULL\n");
-    	if (s->iformat) av_log(NULL, AV_LOG_INFO, "\t format isn't NULL\n");
+    av_log(NULL, AV_LOG_INFO, "avio_flag: %d, read flag: %d\n", s->avio_flags, AVIO_FLAG_READ);
     if ((ret = s->io_open(s, &s->pb, filename, AVIO_FLAG_READ | s->avio_flags, options)) < 0) return ret;
 
     if (s->iformat) return 0;
@@ -544,29 +543,30 @@ int avformat_open_input(AVFormatContext** ps, const char* filename,
         return AVERROR(EINVAL);
     }
 
-    if (fmt) { s->iformat = fmt; }
+    if (fmt) {
+    		av_log(NULL, AV_LOG_INFO, "\t Customize Input format\n");
+    		s->iformat = fmt;
+    }
 
     if (options) {
     		av_log(NULL, AV_LOG_ERROR, "\tCustomize options size: %d\n", av_dict_count(*options));
         av_dict_copy(&tmp, *options, 0);
     }
 
-    if (s->pb) // must be before any goto fail
+    if (s->pb) {
+    	    av_log(NULL, AV_LOG_ERROR, "\tCustomize IOContext\n");
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
-
-    if ((ret = av_opt_set_dict(s, &tmp)) < 0)
-        goto fail;
-
-    if (!(s->url = av_strdup(filename ? filename : ""))) {
-        ret = AVERROR(ENOMEM); goto fail;
     }
+
+    if ((ret = av_opt_set_dict(s, &tmp)) < 0) goto fail;
+
+    if (!(s->url = av_strdup(filename ? filename : ""))) { ret = AVERROR(ENOMEM); goto fail; }
 
 #if FF_API_FORMAT_FILENAME
 FF_DISABLE_DEPRECATION_WARNINGS
     av_strlcpy(s->filename, filename ? filename : "", sizeof(s->filename));
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
-    av_log(NULL, AV_LOG_ERROR, "\t call init_input\n");
     if ((ret = init_input(s, filename, &tmp)) < 0) goto fail;
 
     if (s->iformat) av_log(NULL, AV_LOG_INFO, "[%d] format_name: %s\n\n\n\n", __LINE__, s->iformat->name);

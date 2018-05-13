@@ -72,8 +72,7 @@ const AVClass ffurl_context_class = {
 
 static int url_alloc_for_protocol(URLContext **puc, const URLProtocol *up,
                                   const char *filename, int flags,
-                                  const AVIOInterruptCB *int_cb)
-{
+                                  const AVIOInterruptCB *int_cb) {
     URLContext *uc;
     int err;
 
@@ -250,16 +249,15 @@ int ffurl_handshake(URLContext *c)
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"                \
     "0123456789+-."
 
-static const struct URLProtocol *url_find_protocol(const char *filename) {
-    const URLProtocol **protocols;
+static const struct URLProtocol* url_find_protocol(const char* filename) {
+    const URLProtocol** protocols;
     char proto_str[128], proto_nested[128], *ptr;
     size_t proto_len = strspn(filename, URL_SCHEME_CHARS);
     int i;
-    // av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (filename[proto_len] != ':' &&
        (strncmp(filename, "subfile,", 8) || !strchr(filename + proto_len + 1, ':')) ||
        is_dos_path(filename)) {
-    		av_log(NULL, AV_LOG_INFO, "[%s%d]It's local file\n", __FILE__, __LINE__);
+    		av_log(NULL, AV_LOG_INFO, "It's local file\n");
         strcpy(proto_str, "file");
     } else
         av_strlcpy(proto_str, filename, FFMIN(proto_len + 1, sizeof(proto_str)));
@@ -272,27 +270,25 @@ static const struct URLProtocol *url_find_protocol(const char *filename) {
     if (!protocols) return NULL;
 
     for (i = 0; protocols[i]; ++i) {
-            const URLProtocol *up = protocols[i];
+        const URLProtocol* up = protocols[i];
         if (!strcmp(proto_str, up->name)) {
-            av_freep(&protocols);
+        		av_freep(&protocols);
             return up;
         }
         if (up->flags & URL_PROTOCOL_FLAG_NESTED_SCHEME &&
             !strcmp(proto_nested, up->name)) {
+        		av_log(NULL, AV_LOG_ERROR, "return nested: %s\n", proto_str);
             av_freep(&protocols);
             return up;
         }
     }
-    av_freep(&protocols);
-    return NULL;
+
+    av_freep(&protocols); return NULL;
 }
 
-int ffurl_alloc(URLContext **puc, const char *filename, int flags,
-                const AVIOInterruptCB *int_cb)
-{
-    const URLProtocol *p = NULL;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
-    p = url_find_protocol(filename);
+int ffurl_alloc(URLContext** puc, const char* filename, int flags,
+                const AVIOInterruptCB* int_cb) {
+    const URLProtocol* p = url_find_protocol(filename);
     if (p)
        return url_alloc_for_protocol(puc, p, filename, flags, int_cb);
 
@@ -307,19 +303,17 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags,
 int ffurl_open_whitelist(URLContext **puc, const char *filename, int flags,
                          const AVIOInterruptCB *int_cb, AVDictionary **options,
                          const char *whitelist, const char* blacklist,
-                         URLContext *parent)
+                         URLContext *parent) // whitelist, blacklist, parent is null
 {
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s() marked\n", __FILE__, __FUNCTION__);
-    if (whitelist)  av_log(NULL, AV_LOG_INFO, "whitelist: %s", whitelist);
-    if (blacklist)  av_log(NULL, AV_LOG_INFO, "blacklist: %s", blacklist);
+    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
 
     int ret = ffurl_alloc(puc, filename, flags, int_cb);
-    if (ret < 0)
-        return ret;
-    if (parent)
-        av_opt_copy(*puc, parent);
+    if (ret < 0) return ret;
+
+    if (parent) av_opt_copy(*puc, parent);
+
     if (options &&
         (ret = av_opt_set_dict(*puc, options)) < 0)
         goto fail;

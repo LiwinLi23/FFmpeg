@@ -107,16 +107,14 @@ const char *avio_enum_protocols(void **opaque, int output)
 
 const URLProtocol **ffurl_get_protocols(const char *whitelist,
                                         const char *blacklist) {
-    const URLProtocol **ret;
+    const URLProtocol** ret;
     int i, ret_idx = 0;
 
     ret = av_mallocz_array(FF_ARRAY_ELEMS(url_protocols), sizeof(*ret));
-    if (!ret)
-        return NULL;
+    if (!ret) return NULL;
 
-    for (i = 0; url_protocols[i]; i++) {
+    for (i = 0; url_protocols[i]; ++i) {
         const URLProtocol *up = url_protocols[i];
-
         if (whitelist && *whitelist && !av_match_name(up->name, whitelist))
             continue;
         if (blacklist && *blacklist && av_match_name(up->name, blacklist))

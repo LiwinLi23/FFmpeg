@@ -80,8 +80,7 @@ char *av_strnstr(const char *haystack, const char *needle, size_t hay_length)
     return NULL;
 }
 
-size_t av_strlcpy(char *dst, const char *src, size_t size)
-{
+size_t av_strlcpy(char* dst, const char* src, size_t size) {
     size_t len = 0;
     while (++len < size && *src)
         *dst++ = *src++;

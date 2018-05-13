@@ -199,7 +199,7 @@ static int file_move(URLContext *h_src, URLContext *h_dst)
 
 #if CONFIG_FILE_PROTOCOL
 
-static int file_open(URLContext *h, const char *filename, int flags) {
+static int file_open(URLContext *h, const char* filename, int flags) {
     FileContext *c = h->priv_data;
     int access;
     int fd;

@@ -491,7 +491,7 @@ const AVOutputFormat *av_muxer_iterate(void **opaque)
     return f;
 }
 
-const AVInputFormat *av_demuxer_iterate(void **opaque){
+const AVInputFormat* av_demuxer_iterate(void **opaque){
     uintptr_t i = (uintptr_t)*opaque;
     const AVInputFormat *f = demuxer_list[i];
 
@@ -504,15 +504,16 @@ const AVInputFormat *av_demuxer_iterate(void **opaque){
 FF_DISABLE_DEPRECATION_WARNINGS
 static AVOnce av_format_next_init = AV_ONCE_INIT;
 
-static const AVInputFormat * const *indev_list = NULL;
+static const AVInputFormat * const *indev_list     = NULL;
 static const AVOutputFormat * const *outdev_list = NULL;
 
 static void av_format_init_next(void)
 {
-    AVOutputFormat *prevout = NULL, *out;
-    AVInputFormat *previn = NULL, *in;
+    AVOutputFormat* prevout = NULL, *out;
+    AVInputFormat*previn 		= NULL, *in;
     void *i = 0;
 
+    av_log(NULL, AV_LOG_INFO, "%s\n", __FUNCTION__);
     while ((out = (AVOutputFormat*)av_muxer_iterate(&i))) {
         if (prevout)
             prevout->next = out;
@@ -520,7 +521,7 @@ static void av_format_init_next(void)
     }
 
     if (outdev_list) {
-        for (int j = 0; (out = (AVOutputFormat*)outdev_list[j]); j++) {
+        for (int j = 0; (out = (AVOutputFormat*)outdev_list[j]); ++j) {
             if (prevout)
                 prevout->next = out;
             prevout = out;
@@ -535,21 +536,21 @@ static void av_format_init_next(void)
     }
 
     if (indev_list) {
-        for (int j = 0; (in = (AVInputFormat*)indev_list[j]); j++) {
+        for (int j = 0; (in = (AVInputFormat*)indev_list[j]); ++j) {
             if (previn)
                 previn->next = in;
             previn = in;
         }
     }
-
 }
 
 void avpriv_register_devices(const AVOutputFormat * const o[], const AVInputFormat * const i[])
 {
     static AVMutex avpriv_register_devices_mutex = AV_MUTEX_INITIALIZER;
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n\n", __FUNCTION__);
     ff_mutex_lock(&avpriv_register_devices_mutex);
     outdev_list = o;
-    indev_list = i;
+    indev_list  = i;
     av_format_init_next();
     ff_mutex_unlock(&avpriv_register_devices_mutex);
 }
@@ -576,8 +577,8 @@ AVOutputFormat *av_oformat_next(const AVOutputFormat *f)
         return muxer_list[0] ? (AVOutputFormat*)muxer_list[0] : (outdev_list ? (AVOutputFormat*)outdev_list[0] : NULL);
 }
 
-void av_register_all(void)
-{
+void av_register_all(void) {
+	av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n\n\n", __FILE__, __FUNCTION__);
     ff_thread_once(&av_format_next_init, av_format_init_next);
 }
 

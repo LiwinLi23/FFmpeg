@@ -144,8 +144,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
     return NULL;
 }
 
-AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened,
-                                      int *score_ret)
+AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score_ret)
 {
     AVProbeData lpd = *pd;
     AVInputFormat *fmt1 = NULL, *fmt;
@@ -240,17 +239,16 @@ AVInputFormat *av_probe_input_format(AVProbeData *pd, int is_opened)
     return av_probe_input_format2(pd, is_opened, &score);
 }
 
-int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
-                          const char *filename, void *logctx,
-                          unsigned int offset, unsigned int max_probe_size)
-{
+int av_probe_input_buffer2(AVIOContext* pb, AVInputFormat** fmt,
+                          const char* filename, void* logctx,
+                          unsigned int offset, unsigned int max_probe_size) {
     AVProbeData pd = { filename ? filename : "" };
     uint8_t *buf = NULL;
     int ret = 0, probe_size, buf_offset = 0;
     int score = 0;
     int ret2;
 
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!max_probe_size)
         max_probe_size = PROBE_BUF_MAX;
     else if (max_probe_size < PROBE_BUF_MIN) {
@@ -258,14 +256,14 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
                "Specified probe size value %u cannot be < %u\n", max_probe_size, PROBE_BUF_MIN);
         return AVERROR(EINVAL);
     }
-    av_log(NULL, AV_LOG_INFO, "\t Probe buf size: %d\n", max_probe_size);
 
-    if (offset >= max_probe_size)
-        return AVERROR(EINVAL);
+    av_log(NULL, AV_LOG_INFO, "\t Probe buf size: %d\n", max_probe_size);
+    if (offset >= max_probe_size) return AVERROR(EINVAL);
 
     if (pb->av_class) {
         uint8_t *mime_type_opt = NULL;
         char *semi;
+        av_log(NULL, AV_LOG_INFO, "\t av_class has value\n");
         av_opt_get(pb, "mime_type", AV_OPT_SEARCH_CHILDREN, &mime_type_opt);
         pd.mime_type = (const char *)mime_type_opt;
         semi = pd.mime_type ? strchr(pd.mime_type, ';') : NULL;
@@ -282,12 +280,13 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
     }
 #endif
 
+    av_log(NULL, AV_LOG_INFO, "PROBE_BUF_MAX: %u\n", PROBE_BUF_MAX);
     for (probe_size = PROBE_BUF_MIN; probe_size <= max_probe_size && !*fmt;
          probe_size = FFMIN(probe_size << 1,
                             FFMAX(max_probe_size, probe_size + 1))) {
         score = probe_size < max_probe_size ? AVPROBE_SCORE_RETRY : 0;
-
         /* Read probe data. */
+        av_log(NULL, AV_LOG_INFO, "proble size: %u, offset: %d\n", probe_size, offset);
         if ((ret = av_reallocp(&buf, probe_size + AVPROBE_PADDING_SIZE)) < 0)
             goto fail;
         if ((ret = avio_read(pb, buf + buf_offset,
@@ -316,7 +315,7 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
                        "Format %s detected only with low score of %d, "
                        "misdetection possible!\n", (*fmt)->name, score);
             } else
-                av_log(logctx, AV_LOG_DEBUG,
+                av_log(logctx, AV_LOG_INFO,
                        "Format %s probed with size=%d and score=%d\n",
                        (*fmt)->name, probe_size, score);
 #if 0

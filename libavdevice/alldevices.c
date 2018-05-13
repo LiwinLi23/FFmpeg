@@ -91,12 +91,12 @@ const AVInputFormat *av_indev_iterate(void **opaque)
 FF_DISABLE_DEPRECATION_WARNINGS
 static AVOnce av_device_next_init = AV_ONCE_INIT;
 
-static void av_device_init_next(void)
-{
+static void av_device_init_next(void) {
     AVOutputFormat *prevout = NULL, *out;
     AVInputFormat *previn = NULL, *in;
     void *i = 0;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s() \n", __FUNCTION__);
     while ((out = (AVOutputFormat*)av_outdev_iterate(&i))) {
         if (prevout)
             prevout->next = out;
@@ -105,6 +105,7 @@ static void av_device_init_next(void)
 
     i = 0;
     while ((in = (AVInputFormat*)av_indev_iterate(&i))) {
+    		av_log(NULL, AV_LOG_INFO, "\t Loop[%d] \n", i);
         if (previn)
             previn->next = in;
         previn = in;
