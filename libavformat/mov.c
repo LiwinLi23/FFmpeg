@@ -185,6 +185,7 @@ static int mov_read_covr(MOVContext *c, AVIOContext *pb, int type, int len)
     enum AVCodecID id;
     int ret;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s(type: %d, len: %d)\n", __FUNCTION__, type, len);
     switch (type) {
     case 0xd:  id = AV_CODEC_ID_MJPEG; break;
     case 0xe:  id = AV_CODEC_ID_PNG;   break;
@@ -199,8 +200,9 @@ static int mov_read_covr(MOVContext *c, AVIOContext *pb, int type, int len)
     if (!st)
         return AVERROR(ENOMEM);
     sc = av_mallocz(sizeof(*sc));
-    if (!sc)
-        return AVERROR(ENOMEM);
+    if (!sc) return AVERROR(ENOMEM);
+
+    av_log(NULL, AV_LOG_INFO, "Set priv_data\n");
     st->priv_data = sc;
 
     ret = av_get_packet(pb, &pkt, len);
@@ -1138,6 +1140,7 @@ static int mov_read_moov(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         return 0;
     }
 
+    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
     if ((ret = mov_read_default(c, pb, atom)) < 0)
         return ret;
     /* we parsed the 'moov' atom, we can terminate the parsing as soon as we find the 'mdat' */
@@ -1376,6 +1379,7 @@ static int mov_read_moof(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     c->fragment.moof_offset = c->fragment.implicit_offset = avio_tell(pb) - 8;
     av_log(c->fc, AV_LOG_TRACE, "moof offset %"PRIx64"\n", c->fragment.moof_offset);
     c->frag_index.current = update_frag_index(c, c->fragment.moof_offset);
+    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
     return mov_read_default(c, pb, atom);
 }
 
@@ -1854,6 +1858,8 @@ static int mov_read_wave(MOVContext *c, AVIOContext *pb, MOVAtom atom)
                 return 0;
             }
         }
+
+        av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
         if ((ret = mov_read_default(c, pb, atom)) < 0)
             return ret;
     } else
@@ -1883,8 +1889,10 @@ static int mov_read_glbl(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         unsigned size = avio_rb32(pb);
         unsigned type = avio_rl32(pb);
         avio_seek(pb, -8, SEEK_CUR);
-        if (type == MKTAG('f','i','e','l') && size == atom.size)
+        if (type == MKTAG('f','i','e','l') && size == atom.size) {
+        	    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
             return mov_read_default(c, pb, atom);
+        }
     }
     if (st->codecpar->extradata_size > 1 && st->codecpar->extradata) {
         av_log(c, AV_LOG_WARNING, "ignoring multiple glbl\n");
@@ -2505,6 +2513,7 @@ int ff_mov_read_stsd_entries(MOVContext *c, AVIOContext *pb, int entries)
         /* this will read extra atoms at the end (wave, alac, damr, avcC, hvcC, SMI ...) */
         a.size = size - (avio_tell(pb) - start_pos);
         if (a.size > 8) {
+            av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
             if ((ret = mov_read_default(c, pb, a)) < 0)
                 return ret;
         } else if (a.size > 0)
@@ -4082,17 +4091,20 @@ static int mov_read_trak(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     MOVStreamContext *sc;
     int ret;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     st = avformat_new_stream(c->fc, NULL);
     if (!st) return AVERROR(ENOMEM);
     st->id = c->fc->nb_streams;
     sc = av_mallocz(sizeof(MOVStreamContext));
     if (!sc) return AVERROR(ENOMEM);
 
+    av_log(NULL, AV_LOG_INFO, "Set priv_data\n");
     st->priv_data = sc;
     st->codecpar->codec_type = AVMEDIA_TYPE_DATA;
     sc->ffindex = st->index;
     c->trak_index = st->index;
 
+    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
     if ((ret = mov_read_default(c, pb, atom)) < 0)
         return ret;
 
@@ -4197,6 +4209,7 @@ static int mov_read_ilst(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 {
     int ret;
     c->itunes_metadata = 1;
+    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
     ret = mov_read_default(c, pb, atom);
     c->itunes_metadata = 0;
     return ret;
@@ -4331,6 +4344,7 @@ static int mov_read_meta(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         if (tag == MKTAG('h','d','l','r')) {
             avio_seek(pb, -8, SEEK_CUR);
             atom.size += 8;
+            av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
             return mov_read_default(c, pb, atom);
         }
     }
@@ -5014,6 +5028,7 @@ static int mov_read_cmov(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     ctx.seekable = AVIO_SEEKABLE_NORMAL;
     atom.type = MKTAG('m','o','o','v');
     atom.size = moov_len;
+    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
     ret = mov_read_default(c, &ctx, atom);
 free_and_return:
     av_free(moov_data);
@@ -6226,36 +6241,47 @@ static int mov_read_default(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     return 0;
 }
 
-static int mov_probe(AVProbeData *p)
-{
-    int64_t offset;
+static int mov_probe(AVProbeData* p) {
+    int64_t offset = 0;
     uint32_t tag;
     int score = 0;
     int moov_offset = -1;
 
-    av_log(NULL, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
-    /* check file header */
-    offset = 0;
+    uint32_t length;
+    av_log(NULL, AV_LOG_INFO, "+ Mov probe with buf size: %d\n", p->buf_size);
     for (;;) {
-        /* ignore invalid offset */
-        if ((offset + 8) > (unsigned int)p->buf_size) break;
+    		// av_log(NULL, AV_LOG_INFO, "Cur offset: %lld\n", offset);
+        if ((offset + 8) > (unsigned int)p->buf_size)
+        { av_log(NULL, AV_LOG_INFO, "Ignore the invalid offset \n"); break; }
 
         tag = AV_RL32(p->buf + offset + 4);
+		#if 0
         av_log(NULL, AV_LOG_INFO, "%c, %c, %c, %c\n", *((char*)(p->buf) + 4), *((char*)(p->buf) + 5),
         		*((char*)(p->buf) + 6), *((char*)(p->buf) + 7));
         av_log(NULL, AV_LOG_INFO, "%x, %x, %x, %x\n", *((char*)(p->buf) + 4), *((char*)(p->buf) + 5),
                 		*((char*)(p->buf) + 6), *((char*)(p->buf) + 7));
+		#endif
         av_log(NULL, AV_LOG_INFO, "tag: %d, %d, %d, %d, %d, %d\n", tag, MKTAG('m','o','o','v'),
         		MKTAG('m','d','a','t'), MKTAG('p','n','o','t'), MKTAG('u','d','t','a'), MKTAG('f','t','y','p'));
         switch(tag) {
         /* check for obvious tags */
         case MKTAG('m','o','o','v'):
+			length = AV_RB32(p->buf + offset);
+		    av_log(NULL, AV_LOG_INFO, "moov is second and just only one container box, \n"
+		    						"include mvhd and trak box\n"
+								"show file version and compatible protocol and length: %u\n", length);
             moov_offset = offset + 4;
         case MKTAG('m','d','a','t'):
         case MKTAG('p','n','o','t'): /* detect movs with preview pics like ew.mov and april.mov */
         case MKTAG('u','d','t','a'): /* Packet Video PVAuthor adds this and a lot of more junk */
         case MKTAG('f','t','y','p'):
-            if (AV_RB32(p->buf+offset) < 8 &&
+			if (MKTAG('f','t','y','p') == tag) {
+				length = AV_RB32(p->buf);
+				av_log(NULL, AV_LOG_INFO, "ftyp is first and just only one box, \n"
+						"show file version and compatible protocol and length: %u\n", length);
+			}
+
+            if (AV_RB32(p->buf + offset) < 8 &&
                 (AV_RB32(p->buf+offset) != 1 ||
                  offset + 12 > (unsigned int)p->buf_size ||
                  AV_RB64(p->buf+offset + 8) == 0)) {
@@ -6269,9 +6295,10 @@ static int mov_probe(AVProbeData *p)
                 av_log(NULL, AV_LOG_INFO, "[%d] score: %d", __LINE__, score);
             } else {
                 score = AVPROBE_SCORE_MAX;
-                av_log(NULL, AV_LOG_INFO, "[%d] score: %d", __LINE__, score);
+                av_log(NULL, AV_LOG_INFO, "[%d] score: %d\n", __LINE__, score);
             }
-            offset = FFMAX(4, AV_RB32(p->buf+offset)) + offset;
+
+            offset = FFMAX(4, AV_RB32(p->buf + offset)) + offset;
             break;
         /* those are more common words, so rate then a bit less */
         case MKTAG('e','d','i','w'): /* xdcam files have reverted first tags */
@@ -6299,25 +6326,27 @@ static int mov_probe(AVProbeData *p)
     if(score > AVPROBE_SCORE_MAX - 50 && moov_offset != -1) {
         /* moov atom in the header - we should make sure that this is not a
          * MOV-packed MPEG-PS */
+    		av_log(NULL, AV_LOG_INFO, "Check whether is mov-packed MPEG-PS\n");
         offset = moov_offset;
-
-        while(offset < (p->buf_size - 16)){ /* Sufficient space */
+        while (offset < (p->buf_size - 16)) { /* Sufficient space */
                /* We found an actual hdlr atom */
-            if(AV_RL32(p->buf + offset     ) == MKTAG('h','d','l','r') &&
-               AV_RL32(p->buf + offset +  8) == MKTAG('m','h','l','r') &&
-               AV_RL32(p->buf + offset + 12) == MKTAG('M','P','E','G')){
-                av_log(NULL, AV_LOG_WARNING, "Found media data tag MPEG indicating this is a MOV-packed MPEG-PS.\n");
+            if (AV_RL32(p->buf + offset      ) == MKTAG('h','d','l','r')  &&
+               AV_RL32(p->buf + offset +   8) == MKTAG('m','h','l','r') &&
+               AV_RL32(p->buf + offset + 12) == MKTAG('M','P','E','G')) {
+            		av_log(NULL, AV_LOG_WARNING, "Found media data tag MPEG indicating this is a MOV-packed MPEG-PS.\n");
                 /* We found a media handler reference atom describing an
                  * MPEG-PS-in-MOV, return a
                  * low score to force expanding the probe window until
                  * mpegps_probe finds what it needs */
+            		av_log(NULL, AV_LOG_INFO, "This is mov-packed MPEG-PS\n");
                 return 5;
             }else
                 /* Keep looking */
-                offset+=2;
+                offset += 2;
         }
     }
 
+    av_log(NULL, AV_LOG_WARNING, "- %s() return: %d\n", __FUNCTION__, score);
     return score;
 }
 
@@ -6495,6 +6524,7 @@ static int mov_read_close(AVFormatContext *s)
     MOVContext *mov = s->priv_data;
     int i, j;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     for (i = 0; i < s->nb_streams; i++) {
         AVStream *st = s->streams[i];
         MOVStreamContext *sc = st->priv_data;
@@ -6704,12 +6734,13 @@ fail:
 
 static int mov_read_header(AVFormatContext *s)
 {
-    MOVContext *mov = s->priv_data;
-    AVIOContext *pb = s->pb;
+    MOVContext* mov = s->priv_data;
+    AVIOContext* pb = s->pb;
     int j, err;
     MOVAtom atom = { AV_RL32("root") };
     int i;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     if (mov->decryption_key_len != 0 && mov->decryption_key_len != AES_CTR_KEY_SIZE) {
         av_log(s, AV_LOG_ERROR, "Invalid decryption key len %d expected %d\n",
             mov->decryption_key_len, AES_CTR_KEY_SIZE);
@@ -6728,6 +6759,7 @@ static int mov_read_header(AVFormatContext *s)
     do {
         if (mov->moov_retry)
             avio_seek(pb, 0, SEEK_SET);
+        av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
         if ((err = mov_read_default(mov, pb, atom)) < 0) {
             av_log(s, AV_LOG_ERROR, "error reading header\n");
             mov_read_close(s);
@@ -6909,6 +6941,7 @@ static int mov_read_header(AVFormatContext *s)
         if (mov->frag_index.item[i].moof_offset <= mov->fragment.moof_offset)
             mov->frag_index.item[i].headers_read = 1;
 
+    av_log(NULL, AV_LOG_INFO, "- %s()\n", __FUNCTION__);
     return 0;
 }
 
@@ -6970,6 +7003,7 @@ static int mov_switch_root(AVFormatContext *s, int64_t target, int index)
 
     mov->found_mdat = 0;
 
+    av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
     ret = mov_read_default(mov, s->pb, (MOVAtom){ AV_RL32("root"), INT64_MAX });
     if (ret < 0)
         return ret;
@@ -7012,6 +7046,12 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     int64_t current_index;
     int ret;
     mov->fc = s;
+
+    static char is_printed = 0;
+    if (!is_printed) {
+    		av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);  is_printed = 1;
+    }
+
  retry:
     sample = mov_find_next_sample(s, &st);
     if (!sample || (mov->next_root_atom && sample->pos > mov->next_root_atom)) {
@@ -7314,14 +7354,14 @@ static const AVClass mov_class = {
 
 AVInputFormat ff_mov_demuxer = {
     .name           = "mov,mp4,m4a,3gp,3g2,mj2",
-    .long_name      = NULL_IF_CONFIG_SMALL("QuickTime / MOV"),
-    .priv_class     = &mov_class,
+    .long_name     = NULL_IF_CONFIG_SMALL("QuickTime / MOV"),
+    .priv_class      = &mov_class,
     .priv_data_size = sizeof(MOVContext),
     .extensions     = "mov,mp4,m4a,3gp,3g2,mj2",
-    .read_probe     = mov_probe,
-    .read_header    = mov_read_header,
-    .read_packet    = mov_read_packet,
+    .read_probe    = mov_probe,
+    .read_header   = mov_read_header,
+    .read_packet   = mov_read_packet,
     .read_close     = mov_read_close,
-    .read_seek      = mov_read_seek,
-    .flags          = AVFMT_NO_BYTE_SEEK,
+    .read_seek     = mov_read_seek,
+    .flags           = AVFMT_NO_BYTE_SEEK,
 };

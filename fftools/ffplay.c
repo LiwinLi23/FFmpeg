@@ -2723,6 +2723,7 @@ static int read_thread(void* arg) {
 
     ic->interrupt_callback.callback = decode_interrupt_cb;
     ic->interrupt_callback.opaque = is;
+    av_log(NULL, AV_LOG_WARNING, "Decode interrupt cb: %x\n", decode_interrupt_cb);
     av_log(NULL, AV_LOG_WARNING, "LT disable the scan all pmts\n");
 #if 0
     if (!av_dict_get(format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE)) {
@@ -2731,9 +2732,10 @@ static int read_thread(void* arg) {
     }
 #endif
 
-    av_log(NULL, AV_LOG_WARNING, "\t Try to open input \n");
+    av_log(NULL, AV_LOG_WARNING, "++++++++++++++++   Step 1: open input ++++++++++++++++++++++++++++++++ \n");
     err = avformat_open_input(&ic, is->filename, is->iformat, &format_opts);
     if (err < 0) { print_error(is->filename, err); ret = -1; goto fail; }
+    av_log(NULL, AV_LOG_WARNING, "----------------------------   Step 1: open input ----------------------------------------------------------\n");
 
     if (scan_all_pmts_set)
         av_dict_set(&format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
@@ -2749,11 +2751,13 @@ static int read_thread(void* arg) {
 
     av_format_inject_global_side_data(ic);
 
+    av_log(NULL, AV_LOG_WARNING, "Step 2: find stream info ----------------------------------------------------- \n");
     if (find_stream_info) {
-        AVDictionary **opts = setup_find_stream_info_opts(ic, codec_opts);
+        AVDictionary** opts = setup_find_stream_info_opts(ic, codec_opts);
         int orig_nb_streams = ic->nb_streams;
+        av_log(NULL, AV_LOG_ERROR, "Call avformat_find_steam_info()\n");
         err = avformat_find_stream_info(ic, opts);
-        for (i = 0; i < orig_nb_streams; i++)
+        for (i = 0; i < orig_nb_streams; ++i)
             av_dict_free(&opts[i]);
 
         av_freep(&opts);
@@ -2789,7 +2793,7 @@ static int read_thread(void* arg) {
     }
 
     is->realtime = is_realtime(ic);
-    av_log(NULL, AV_LOG_WARNING, "\t Dump format info\n");
+    av_log(NULL, AV_LOG_WARNING, "\t --------------------------------------- Dump format info --------------------------------------------------------\n");
     if (show_status) av_dump_format(ic, 0, is->filename, 0);
 
     for (i = 0; i < ic->nb_streams; ++i) {
@@ -3710,9 +3714,25 @@ http://playertest.longtailvideo.com/adaptive/bipbop/gear4/prog_index.m3u8
 http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8
 http://devimages.apple.com/iphone/samples/bipbop/gear1/prog_index.m3u8
 http://live.hkstv.hk.lxdns.com/live/hks/playlist.m3u8
+
 https://dco4urblvsasc.cloudfront.net/811/81095_ywfZjAuP/game/index.m3u8
 
 rtmp://live.hkstv.hk.lxdns.com/live/hks
 
 rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov
 #endif
+#if 0
+#EXTM3U
+#EXT-X-STREAM-INF:PROGRAM-ID=1, BANDWIDTH=414000
+http://live.hkstv.hk.lxdns.com/live/hks/playlist.m3u8?wsSession=abf4cd64ac36e7c62be19805-152863587071676&wsIPSercert=f8cd9ee27d627558586a47e964bc5dba&wsMonitor=-1
+
+#endif
+
+
+
+
+
+
+
+
+

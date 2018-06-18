@@ -104,8 +104,8 @@ static const AVClass pipe_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-static int file_read(URLContext *h, unsigned char *buf, int size)
-{
+static int file_read(URLContext* h, unsigned char* buf, int size) {
+	// av_log(NULL, AV_LOG_WARNING, "%s(size: %d)\n", __FUNCTION__, size);
     FileContext *c = h->priv_data;
     int ret;
     size = FFMIN(size, c->blocksize);
@@ -205,7 +205,8 @@ static int file_open(URLContext *h, const char* filename, int flags) {
     int fd;
     struct stat st;
 
-    av_log(NULL, AV_LOG_WARNING, "+ %s(%s)\n", __FUNCTION__, filename);
+    av_log(NULL, AV_LOG_INFO, "+ %s(%s) with flag: %d\n",
+    		    __FUNCTION__, filename, flags);
     av_strstart(filename, "file:", &filename);
 
     if (flags & AVIO_FLAG_WRITE && flags & AVIO_FLAG_READ) {
@@ -217,9 +218,11 @@ static int file_open(URLContext *h, const char* filename, int flags) {
         if (c->trunc)
             access |= O_TRUNC;
     } else {
+    		av_log(NULL, AV_LOG_INFO, "Just open it with readonly\n");
         access = O_RDONLY;
     }
 #ifdef O_BINARY
+    av_log(NULL, AV_LOG_INFO, "Binary access\n");
     access |= O_BINARY;
 #endif
     fd = avpriv_open(filename, access, 0666);
@@ -228,6 +231,7 @@ static int file_open(URLContext *h, const char* filename, int flags) {
     c->fd = fd;
 
     h->is_streamed = !fstat(fd, &st) && S_ISFIFO(st.st_mode);
+    av_log(NULL, AV_LOG_INFO, "Whether FIFO: %d\n",  S_ISFIFO(st.st_mode));
 
     /* Buffer writes more than the default 32k to improve throughput especially
      * with networked file systems */
@@ -254,9 +258,9 @@ static int64_t file_seek(URLContext *h, int64_t pos, int whence)
     return ret < 0 ? AVERROR(errno) : ret;
 }
 
-static int file_close(URLContext *h)
-{
-    FileContext *c = h->priv_data;
+static int file_close(URLContext* h) {
+	av_log(NULL, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
+    FileContext* c = h->priv_data;
     return close(c->fd);
 }
 

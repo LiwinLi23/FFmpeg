@@ -189,7 +189,7 @@ struct variant {
 typedef struct HLSContext {
     AVClass *class;
     AVFormatContext *ctx;
-    int n_variants;
+    int n_variants;							// 一级m3u8中包含的可选m3u8个数
     struct variant **variants;
     int n_playlists;
     struct playlist **playlists;
@@ -708,9 +708,8 @@ static int open_url(AVFormatContext *s, AVIOContext **pb, const char *url,
     return ret;
 }
 
-static int parse_playlist(HLSContext *c, const char *url,
-                          struct playlist *pls, AVIOContext *in)
-{
+static int parse_playlist(HLSContext* c, const char* url,
+                          struct playlist* pls, AVIOContext* in) {
     int ret = 0, is_segment = 0, is_variant = 0;
     int64_t duration = 0;
     enum KeyType key_type = KEY_NONE;
@@ -728,8 +727,9 @@ static int parse_playlist(HLSContext *c, const char *url,
     struct segment *cur_init_section = NULL;
     int is_http = av_strstart(url, "http", NULL);
 
-    av_log(NULL, AV_LOG_INFO, "+ %s() with url: \n%s\n\n", __FUNCTION__, url);
+    av_log(NULL, AV_LOG_WARNING, "+ %s() with url: \n%s\n\n", __FUNCTION__, url);
     if (is_http && !in && c->http_persistent && c->playlist_pb) {
+    		av_log(c->ctx, AV_LOG_ERROR, "Should note in %d&&&&&&&&&\n", __LINE__);
         in = c->playlist_pb;
         ret = open_url_keepalive(c->ctx, &c->playlist_pb, url);
         if (ret == AVERROR_EXIT) {
@@ -744,20 +744,19 @@ static int parse_playlist(HLSContext *c, const char *url,
     }
 
     if (!in) {
-#if 1
         AVDictionary *opts = NULL;
+        av_log(c->ctx, AV_LOG_WARNING, "Redefine AVIOContext \n");
         /* Some HLS servers don't like being sent the range header */
         av_dict_set(&opts, "seekable", "0", 0);
-
         // broker prior HTTP options that should be consistent across requests
         av_dict_set(&opts, "user_agent", c->user_agent, 0);
         av_dict_set(&opts, "cookies", c->cookies, 0);
         av_dict_set(&opts, "headers", c->headers, 0);
         av_dict_set(&opts, "http_proxy", c->http_proxy, 0);
 
-        if (c->http_persistent)
-            av_dict_set(&opts, "multiple_requests", "1", 0);
+        if (c->http_persistent) av_dict_set(&opts, "multiple_requests", "1", 0);
 
+        av_log(c->ctx, AV_LOG_WARNING, "Ctx->io_open url: %s\n", url);
         ret = c->ctx->io_open(c->ctx, &in, url, AVIO_FLAG_READ, &opts);
         av_dict_free(&opts);
         if (ret < 0)
@@ -767,37 +766,33 @@ static int parse_playlist(HLSContext *c, const char *url,
             c->playlist_pb = in;
         else
             close_in = 1;
-#else
-        ret = open_in(c, &in, url);
-        if (ret < 0)
-            return ret;
-        close_in = 1;
-#endif
     }
 
-    if (av_opt_get(in, "location", AV_OPT_SEARCH_CHILDREN, &new_url) >= 0)
+    if (av_opt_get(in, "location", AV_OPT_SEARCH_CHILDREN, &new_url) >= 0) {
+    		av_log(c->ctx, AV_LOG_ERROR, "new_url: %s\n", new_url);
         url = new_url;
+    }
 
     read_chomp_line(in, line, sizeof(line));
-    if (strcmp(line, "#EXTM3U")) {
-        ret = AVERROR_INVALIDDATA;  goto fail;
-    }
+    if (strcmp(line, "#EXTM3U")) { ret = AVERROR_INVALIDDATA;  goto fail; }
 
     if (pls) {
         free_segment_list(pls);
         pls->finished = 0;
         pls->type = PLS_TYPE_UNSPECIFIED;
     }
+
     while (!avio_feof(in)) {
         read_chomp_line(in, line, sizeof(line));
+        av_log(c->ctx, AV_LOG_WARNING, "%s\n", line);
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
-        	    av_log(NULL, AV_LOG_WARNING, "\n%s\n", line);
+        	    // av_log(NULL, AV_LOG_WARNING, "\n%s\n", line);
             is_variant = 1;
             memset(&variant_info, 0, sizeof(variant_info));
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_variant_args,
                                &variant_info);
         } else if (av_strstart(line, "#EXT-X-KEY:", &ptr)) {
-        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        		// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct key_info info = {{0}};
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_key_args,
                                &info);
@@ -813,25 +808,25 @@ static int parse_playlist(HLSContext *c, const char *url,
             }
             av_strlcpy(key, info.uri, sizeof(key));
         } else if (av_strstart(line, "#EXT-X-MEDIA:", &ptr)) {
-        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        		// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct rendition_info info = {{0}};
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_rendition_args,
                                &info);
             new_rendition(c, &info, url);
         } else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {
-        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        		// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
         		ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
             pls->target_duration = strtoll(ptr, NULL, 10) * AV_TIME_BASE;
         } else if (av_strstart(line, "#EXT-X-MEDIA-SEQUENCE:", &ptr)) {
-        		av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        		// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
             pls->start_seq_no = atoi(ptr);
         } else if (av_strstart(line, "#EXT-X-PLAYLIST-TYPE:", &ptr)) {
-            av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+            // av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
@@ -840,7 +835,7 @@ static int parse_playlist(HLSContext *c, const char *url,
             else if (!strcmp(ptr, "VOD"))
                 pls->type = PLS_TYPE_VOD;
         } else if (av_strstart(line, "#EXT-X-MAP:", &ptr)) {
-        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        	    // av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct init_section_info info = {{0}};
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
@@ -849,21 +844,21 @@ static int parse_playlist(HLSContext *c, const char *url,
                                &info);
             cur_init_section = new_init_section(pls, &info, url);
         } else if (av_strstart(line, "#EXT-X-ENDLIST", &ptr)) {
-        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        	    // av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             if (pls)
                 pls->finished = 1;
         } else if (av_strstart(line, "#EXTINF:", &ptr)) {
-          	av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+          	// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             is_segment = 1;
             duration   = atof(ptr) * AV_TIME_BASE;
         } else if (av_strstart(line, "#EXT-X-BYTERANGE:", &ptr)) {
-         	av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+         	// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             seg_size = strtoll(ptr, NULL, 10);
             ptr = strchr(ptr, '@');
             if (ptr)
                 seg_offset = strtoll(ptr+1, NULL, 10);
         } else if (av_strstart(line, "#", NULL)) {
-        	    av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        	    // av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             continue;
         } else if (line[0]) {
             if (is_variant) {
@@ -1810,7 +1805,7 @@ static int hls_close(AVFormatContext *s)
 }
 
 static int hls_read_header(AVFormatContext* s) {
-    void *u = (s->flags & AVFMT_FLAG_CUSTOM_IO) ? NULL : s->pb;
+    void* u = (s->flags & AVFMT_FLAG_CUSTOM_IO) ? NULL : s->pb;
     HLSContext *c = s->priv_data;
     int ret = 0, i;
     int highest_cur_seq_no = 0;
@@ -1836,24 +1831,24 @@ static int hls_read_header(AVFormatContext* s) {
         update_options(&c->http_proxy, "http_proxy", u);
     }
 
-    av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
     if ((ret = parse_playlist(c, s->url, NULL, s->pb)) < 0) goto fail;
+
     if ((ret = save_avio_options(s)) < 0)  goto fail;
 
     /* Some HLS servers don't like being sent the range header */
     av_dict_set(&c->avio_opts, "seekable", "0", 0);
 
-    if (c->n_variants == 0) {
-        av_log(NULL, AV_LOG_WARNING, "Empty playlist\n");
-        ret = AVERROR_EOF;
-        goto fail;
+    av_log(c->ctx, AV_LOG_INFO, "\t Hls's variants: %d\n", c->n_variants);
+    if (0 == c->n_variants) {
+        av_log(NULL, AV_LOG_ERROR, "Empty playlist\n");
+        ret = AVERROR_EOF; goto fail;
     }
-    /* If the playlist only contained playlists (Master Playlist),
-     * parse each individual playlist. */
+
+    av_log(c->ctx, AV_LOG_INFO, "\t playlist num: %d\n", c->n_playlists);
     if (c->n_playlists > 1 || c->playlists[0]->n_segments == 0) {
-        for (i = 0; i < c->n_playlists; i++) {
-            struct playlist *pls = c->playlists[i];
-            	av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
+        for (i = 0; i < c->n_playlists; ++i) {
+            struct playlist* pls = c->playlists[i];
+            	av_log(NULL, AV_LOG_INFO, "\t Pase sub url: %s\n", pls->url);
             if ((ret = parse_playlist(c, pls->url, pls, NULL)) < 0)
                 goto fail;
         }
@@ -2101,16 +2096,15 @@ static int compare_ts_with_wrapdetect(int64_t ts_a, struct playlist *pls_a,
     return av_compare_mod(scaled_ts_a, scaled_ts_b, 1LL << 33);
 }
 
-static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
-{
-    HLSContext *c = s->priv_data;
+static int hls_read_packet(AVFormatContext* s, AVPacket* pkt) {
+    HLSContext* c = s->priv_data;
     int ret, i, minplaylist = -1;
-
     recheck_discard_flags(s, c->first_packet);
     c->first_packet = 0;
 
-    for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+    av_log(s, AV_LOG_WARNING, "\t + %s\n", __FUNCTION__);
+    for (i = 0; i < c->n_playlists; ++i) {
+        struct playlist* pls = c->playlists[i];
         /* Make sure we've got one buffered packet from each open playlist
          * stream */
         if (pls->needed && !pls->pkt.data) {
@@ -2240,6 +2234,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
 
         return 0;
     }
+
     return AVERROR_EOF;
 }
 

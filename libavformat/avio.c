@@ -167,11 +167,10 @@ int ffurl_connect(URLContext *uc, AVDictionary **options) {
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
     av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
-    if (uc) {
-    		if (uc->prot) av_log(NULL, AV_LOG_WARNING, "Protocol name: %s\n", uc->prot->name);
+    if (!options) {
+    		av_log(NULL, AV_LOG_WARNING, "has options\n");
+    		options = &tmp_opts;
     }
-
-    if (!options) { options = &tmp_opts; }
 
     // Check that URLContext was initialized correctly and lists are matching if set
     av_assert0(!(e=av_dict_get(*options, "protocol_whitelist", NULL, 0)) ||
@@ -357,25 +356,34 @@ int ffurl_open(URLContext **puc, const char *filename, int flags,
                                 int_cb, options, NULL, NULL, NULL);
 }
 
-static inline int retry_transfer_wrapper(URLContext *h, uint8_t *buf,
+static inline int retry_transfer_wrapper(URLContext* h, uint8_t* buf,
                                          int size, int size_min,
-                                         int (*transfer_func)(URLContext *h,
-                                                              uint8_t *buf,
-                                                              int size))
-{
-    int ret, len;
+                                         int (*transfer_func)(URLContext* h,
+                                                              uint8_t* buf,
+                                                              int size)) {
+    int ret, len, check_res;
     int fast_retries = 5;
     int64_t wait_since = 0;
+    // av_log(h, AV_LOG_WARNING, "+ %s() \n", __FUNCTION__);
 
     len = 0;
     while (len < size_min) {
-        if (ff_check_interrupt(&h->interrupt_callback))
+		#if 0
+    		if (h->interrupt_callback.callback) {
+    			av_log(h, AV_LOG_ERROR, "Interrupt func: %x\n", h->interrupt_callback.callback);
+    		}
+		#endif
+    		check_res = ff_check_interrupt(&h->interrupt_callback);
+    		// av_log(h, AV_LOG_WARNING, "check res: %d\n", check_res);
+        if (check_res) {
             return AVERROR_EXIT;
+        }
         ret = transfer_func(h, buf + len, size - len);
-        if (ret == AVERROR(EINTR))
-            continue;
-        if (h->flags & AVIO_FLAG_NONBLOCK)
+        if (ret == AVERROR(EINTR)) continue;
+
+        if (h->flags & AVIO_FLAG_NONBLOCK) {
             return ret;
+        }
         if (ret == AVERROR(EAGAIN)) {
             ret = 0;
             if (fast_retries) {
@@ -399,11 +407,11 @@ static inline int retry_transfer_wrapper(URLContext *h, uint8_t *buf,
         }
         len += ret;
     }
+
     return len;
 }
 
-int ffurl_read(URLContext *h, unsigned char *buf, int size)
-{
+int ffurl_read(URLContext* h, unsigned char* buf, int size) {
     if (!(h->flags & AVIO_FLAG_READ))
         return AVERROR(EIO);
     return retry_transfer_wrapper(h, buf, size, 1, h->prot->url_read);
