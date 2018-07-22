@@ -306,7 +306,11 @@ int ffurl_open_whitelist(URLContext **puc, const char *filename, int flags,
 {
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\nfilename: %s\nflags: %d\n"
+           "int_cb: %x\noptions count: %d\nwhitelist: %x, blacklist: %x, parent: %x\n" ,
+            __FILE__, __FUNCTION__, filename, flags, int_cb->callback, av_dict_count(*options), 
+            whitelist, blacklist, parent);
 
     int ret = ffurl_alloc(puc, filename, flags, int_cb);
     if (ret < 0) return ret;
@@ -365,7 +369,6 @@ static inline int retry_transfer_wrapper(URLContext* h, uint8_t* buf,
     int fast_retries = 5;
     int64_t wait_since = 0;
     // av_log(h, AV_LOG_WARNING, "+ %s() \n", __FUNCTION__);
-
     len = 0;
     while (len < size_min) {
 		#if 0
@@ -382,12 +385,14 @@ static inline int retry_transfer_wrapper(URLContext* h, uint8_t* buf,
         if (ret == AVERROR(EINTR)) continue;
 
         if (h->flags & AVIO_FLAG_NONBLOCK) {
+        		av_log(h, AV_LOG_ERROR, "[%s:%d]Url_ctx's flag is no-block\n", __FILE__, __LINE__);
             return ret;
         }
         if (ret == AVERROR(EAGAIN)) {
+        		// av_log(h, AV_LOG_ERROR, "[%s:%d] EAGAIN \n", __FILE__, __LINE__);
             ret = 0;
             if (fast_retries) {
-                fast_retries--;
+                --fast_retries;
             } else {
                 if (h->rw_timeout) {
                     if (!wait_since)

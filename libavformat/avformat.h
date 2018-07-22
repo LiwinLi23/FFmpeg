@@ -1380,7 +1380,7 @@ typedef struct AVFormatContext {
      *
      * Set by avformat_new_stream(), must not be modified by any other code.
      */
-    unsigned int nb_streams;
+    unsigned int nb_streams;							// LT: stream number
     /**
      * A list of all streams in the file. New streams are created with
      * avformat_new_stream().

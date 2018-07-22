@@ -6030,6 +6030,10 @@ static int mov_read_dops(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     return 0;
 }
 
+/*
+vmhd box（Video Media Header Box） 它是minf box的第一个子box（即header box）。
+“dinf”为data information box, 是minf box的子box
+*/
 static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('A','C','L','R'), mov_read_aclr },
 { MKTAG('A','P','R','G'), mov_read_avid },
@@ -6043,53 +6047,53 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('d','i','n','f'), mov_read_default },
 { MKTAG('D','p','x','E'), mov_read_dpxe },
 { MKTAG('d','r','e','f'), mov_read_dref },
-{ MKTAG('e','d','t','s'), mov_read_default },
-{ MKTAG('e','l','s','t'), mov_read_elst },
+{ MKTAG('e','d','t','s'), mov_read_default },       // LT: An option box
+{ MKTAG('e','l','s','t'), mov_read_elst },          // LT: edts's sub-box
 { MKTAG('e','n','d','a'), mov_read_enda },
 { MKTAG('f','i','e','l'), mov_read_fiel },
 { MKTAG('a','d','r','m'), mov_read_adrm },
 { MKTAG('f','t','y','p'), mov_read_ftyp },
 { MKTAG('g','l','b','l'), mov_read_glbl },
-{ MKTAG('h','d','l','r'), mov_read_hdlr },
+{ MKTAG('h','d','l','r'), mov_read_hdlr },          // LT: Handler reference box
 { MKTAG('i','l','s','t'), mov_read_ilst },
 { MKTAG('j','p','2','h'), mov_read_jp2h },
 { MKTAG('m','d','a','t'), mov_read_mdat },
-{ MKTAG('m','d','h','d'), mov_read_mdhd },
+{ MKTAG('m','d','h','d'), mov_read_mdhd },          // LT: media header box
 { MKTAG('m','d','i','a'), mov_read_default },
 { MKTAG('m','e','t','a'), mov_read_meta },
-{ MKTAG('m','i','n','f'), mov_read_default },
+{ MKTAG('m','i','n','f'), mov_read_default },       // LT: media information box
 { MKTAG('m','o','o','f'), mov_read_moof },
 { MKTAG('m','o','o','v'), mov_read_moov },
 { MKTAG('m','v','e','x'), mov_read_default },
 { MKTAG('m','v','h','d'), mov_read_mvhd },
 { MKTAG('S','M','I',' '), mov_read_svq3 },
 { MKTAG('a','l','a','c'), mov_read_alac }, /* alac specific atom */
-{ MKTAG('a','v','c','C'), mov_read_glbl },
+{ MKTAG('a','v','c','C'), mov_read_glbl },          // LT: avcC
 { MKTAG('p','a','s','p'), mov_read_pasp },
 { MKTAG('s','i','d','x'), mov_read_sidx },
-{ MKTAG('s','t','b','l'), mov_read_default },
-{ MKTAG('s','t','c','o'), mov_read_stco },
+{ MKTAG('s','t','b','l'), mov_read_default },       // LT: sample table box
+{ MKTAG('s','t','c','o'), mov_read_stco },          // LT: Chunk Offset Box,定义了每个thunk在媒体流中的位置
 { MKTAG('s','t','p','s'), mov_read_stps },
 { MKTAG('s','t','r','f'), mov_read_strf },
-{ MKTAG('s','t','s','c'), mov_read_stsc },
-{ MKTAG('s','t','s','d'), mov_read_stsd }, /* sample description */
-{ MKTAG('s','t','s','s'), mov_read_stss }, /* sync sample */
-{ MKTAG('s','t','s','z'), mov_read_stsz }, /* sample size */
-{ MKTAG('s','t','t','s'), mov_read_stts },
+{ MKTAG('s','t','s','c'), mov_read_stsc },          // LT: （Sample To Chunk Box）
+{ MKTAG('s','t','s','d'), mov_read_stsd }, /* sample description box */
+{ MKTAG('s','t','s','s'), mov_read_stss }, /* sync sample */   //LT: stss”确定media中的关键帧
+{ MKTAG('s','t','s','z'), mov_read_stsz }, /* sample size: 定义了每个sample的大小 */
+{ MKTAG('s','t','t','s'), mov_read_stts },          // LT： sample time to sample
 { MKTAG('s','t','z','2'), mov_read_stsz }, /* compact sample size */
 { MKTAG('t','k','h','d'), mov_read_tkhd }, /* track header */
 { MKTAG('t','f','d','t'), mov_read_tfdt },
 { MKTAG('t','f','h','d'), mov_read_tfhd }, /* track fragment header */
-{ MKTAG('t','r','a','k'), mov_read_trak },
+{ MKTAG('t','r','a','k'), mov_read_trak },          // LT: 
 { MKTAG('t','r','a','f'), mov_read_default },
 { MKTAG('t','r','e','f'), mov_read_default },
 { MKTAG('t','m','c','d'), mov_read_tmcd },
 { MKTAG('c','h','a','p'), mov_read_chap },
 { MKTAG('t','r','e','x'), mov_read_trex },
 { MKTAG('t','r','u','n'), mov_read_trun },
-{ MKTAG('u','d','t','a'), mov_read_default },
+{ MKTAG('u','d','t','a'), mov_read_default },       // LT: User comstomized data
 { MKTAG('w','a','v','e'), mov_read_wave },
-{ MKTAG('e','s','d','s'), mov_read_esds },
+{ MKTAG('e','s','d','s'), mov_read_esds },          // LT: undefined
 { MKTAG('d','a','c','3'), mov_read_dac3 }, /* AC-3 info */
 { MKTAG('d','e','c','3'), mov_read_dec3 }, /* EAC-3 info */
 { MKTAG('d','d','t','s'), mov_read_ddts }, /* DTS audio descriptor */
@@ -6120,33 +6124,36 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { 0, NULL }
 };
 
-static int mov_read_default(MOVContext *c, AVIOContext *pb, MOVAtom atom)
-{
+static int mov_read_default(MOVContext* c, AVIOContext* pb, MOVAtom atom) {
     int64_t total_size = 0;
     MOVAtom a;
     int i;
 
+    av_log(NULL, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "\t atom_depth: %d\n", c->atom_depth);
     if (c->atom_depth > 10) {
         av_log(c->fc, AV_LOG_ERROR, "Atoms too deeply nested\n");
         return AVERROR_INVALIDDATA;
     }
-    c->atom_depth ++;
 
-    if (atom.size < 0)
-        atom.size = INT64_MAX;
+    ++(c->atom_depth);
+    av_log(NULL, AV_LOG_INFO, "\t atom size: %"PRId64"\n", atom.size);
+    if (atom.size < 0) atom.size = INT64_MAX;
+
     while (total_size <= atom.size - 8 && !avio_feof(pb)) {
         int (*parse)(MOVContext*, AVIOContext*, MOVAtom) = NULL;
-        a.size = atom.size;
-        a.type=0;
+        a.size  = atom.size;
+        a.type = 0;
         if (atom.size >= 8) {
-            a.size = avio_rb32(pb);
-            a.type = avio_rl32(pb);
+            a.size = avio_rb32(pb); a.type = avio_rl32(pb);
+            av_log(NULL, AV_LOG_INFO, "\t type: %s, Size: %d\n", av_fourcc2str(a.type), a.size);
             if (a.type == MKTAG('f','r','e','e') &&
                 a.size >= 8 &&
                 c->fc->strict_std_compliance < FF_COMPLIANCE_STRICT &&
                 c->moov_retry) {
                 uint8_t buf[8];
                 uint32_t *type = (uint32_t *)buf + 1;
+                av_log(NULL, AV_LOG_INFO, "\t free type");
                 if (avio_read(pb, buf, 8) != 8)
                     return AVERROR_INVALIDDATA;
                 avio_seek(pb, -8, SEEK_CUR);
@@ -6173,7 +6180,7 @@ static int mov_read_default(MOVContext *c, AVIOContext *pb, MOVAtom atom)
                 total_size += 8;
             }
         }
-        av_log(c->fc, AV_LOG_TRACE, "type:'%s' parent:'%s' sz: %"PRId64" %"PRId64" %"PRId64"\n",
+        av_log(c->fc, AV_LOG_INFO, "type:'%s' parent:'%s' sz: %"PRId64" %"PRId64" %"PRId64"\n",
                av_fourcc2str(a.type), av_fourcc2str(atom.type), a.size, total_size, atom.size);
         if (a.size == 0) {
             a.size = atom.size - total_size + 8;
@@ -6237,7 +6244,7 @@ static int mov_read_default(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     if (total_size < atom.size && atom.size < 0x7ffff)
         avio_skip(pb, atom.size - total_size);
 
-    c->atom_depth --;
+    --(c->atom_depth);
     return 0;
 }
 
@@ -6248,7 +6255,7 @@ static int mov_probe(AVProbeData* p) {
     int moov_offset = -1;
 
     uint32_t length;
-    av_log(NULL, AV_LOG_INFO, "+ Mov probe with buf size: %d\n", p->buf_size);
+    av_log(NULL, AV_LOG_WARNING, "+ Mov probe with buf size: %d\n", p->buf_size);
     for (;;) {
     		// av_log(NULL, AV_LOG_INFO, "Cur offset: %lld\n", offset);
         if ((offset + 8) > (unsigned int)p->buf_size)
@@ -6732,20 +6739,21 @@ fail:
     return ret;
 }
 
-static int mov_read_header(AVFormatContext *s)
-{
+static int mov_read_header(AVFormatContext* s) {
     MOVContext* mov = s->priv_data;
-    AVIOContext* pb = s->pb;
+    AVIOContext* pb  = s->pb;
     int j, err;
     MOVAtom atom = { AV_RL32("root") };
     int i;
 
-    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    av_log(NULL, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
     if (mov->decryption_key_len != 0 && mov->decryption_key_len != AES_CTR_KEY_SIZE) {
         av_log(s, AV_LOG_ERROR, "Invalid decryption key len %d expected %d\n",
             mov->decryption_key_len, AES_CTR_KEY_SIZE);
         return AVERROR(EINVAL);
     }
+
+    av_log(mov->fc, AV_LOG_INFO, "\t Cur offset=%"PRId64"\n", avio_tell(pb));
 
     mov->fc = s;
     mov->trak_index = -1;
@@ -6755,23 +6763,26 @@ static int mov_read_header(AVFormatContext *s)
     else
         atom.size = INT64_MAX;
 
-    /* check MOV header */
+    av_log(NULL, AV_LOG_INFO, "Check MOV header\n");
     do {
-        if (mov->moov_retry)
-            avio_seek(pb, 0, SEEK_SET);
-        av_log(NULL, AV_LOG_INFO, "[%d] mov_read_default\n", __LINE__);
+        if (mov->moov_retry) {
+        		av_log(s, AV_LOG_ERROR, "\t moov retry\n");
+        		avio_seek(pb, 0, SEEK_SET);
+        }
+
         if ((err = mov_read_default(mov, pb, atom)) < 0) {
             av_log(s, AV_LOG_ERROR, "error reading header\n");
-            mov_read_close(s);
-            return err;
+            mov_read_close(s); return err;
         }
     } while ((pb->seekable & AVIO_SEEKABLE_NORMAL) && !mov->found_moov && !mov->moov_retry++);
+
     if (!mov->found_moov) {
         av_log(s, AV_LOG_ERROR, "moov atom not found\n");
         mov_read_close(s);
         return AVERROR_INVALIDDATA;
     }
-    av_log(mov->fc, AV_LOG_TRACE, "on_parse_exit_offset=%"PRId64"\n", avio_tell(pb));
+    av_log(mov->fc, AV_LOG_INFO, "\t on_parse_exit_offset=%"PRId64"\n", avio_tell(pb));
+    av_log(NULL, AV_LOG_ERROR, "\t nb_streams: %d\n", s->nb_streams);
 
     if (pb->seekable & AVIO_SEEKABLE_NORMAL) {
         if (mov->nb_chapter_tracks > 0 && !mov->ignore_chapters)
@@ -6784,6 +6795,7 @@ static int mov_read_header(AVFormatContext *s)
             }
     }
 
+    av_log(NULL, AV_LOG_ERROR, "\t nb_streams: %d\n", s->nb_streams);
     /* copy timecode metadata from tmcd tracks to the related video streams */
     for (i = 0; i < s->nb_streams; i++) {
         AVStream *st = s->streams[i];
@@ -6805,7 +6817,7 @@ static int mov_read_header(AVFormatContext *s)
     }
     export_orphan_timecode(s);
 
-    for (i = 0; i < s->nb_streams; i++) {
+    for (i = 0; i < s->nb_streams; ++i) {
         AVStream *st = s->streams[i];
         MOVStreamContext *sc = st->priv_data;
         fix_timescale(mov, sc);
@@ -6945,23 +6957,27 @@ static int mov_read_header(AVFormatContext *s)
     return 0;
 }
 
-static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
-{
-    AVIndexEntry *sample = NULL;
+static AVIndexEntry* mov_find_next_sample(AVFormatContext* s, AVStream** st) {
+    AVIndexEntry* sample = NULL;
     int64_t best_dts = INT64_MAX;
     int i;
-    for (i = 0; i < s->nb_streams; i++) {
-        AVStream *avst = s->streams[i];
-        MOVStreamContext *msc = avst->priv_data;
+    // av_log(s, AV_LOG_ERROR, "nb_streams: %d\n", s->nb_streams);
+    for (i = 0; i < s->nb_streams; ++i) {
+        AVStream* avst = s->streams[i];
+        MOVStreamContext* msc = avst->priv_data;
+
         if (msc->pb && msc->current_sample < avst->nb_index_entries) {
-            AVIndexEntry *current_sample = &avst->index_entries[msc->current_sample];
+            AVIndexEntry* current_sample = &avst->index_entries[msc->current_sample];
+            // av_log(s, AV_LOG_WARNING, "time_scale: %d\n", msc->time_scale);
             int64_t dts = av_rescale(current_sample->timestamp, AV_TIME_BASE, msc->time_scale);
-            av_log(s, AV_LOG_TRACE, "stream %d, sample %d, dts %"PRId64"\n", i, msc->current_sample, dts);
-            if (!sample || (!(s->pb->seekable & AVIO_SEEKABLE_NORMAL) && current_sample->pos < sample->pos) ||
-                ((s->pb->seekable & AVIO_SEEKABLE_NORMAL) &&
-                 ((msc->pb != s->pb && dts < best_dts) || (msc->pb == s->pb &&
-                 ((FFABS(best_dts - dts) <= AV_TIME_BASE && current_sample->pos < sample->pos) ||
-                  (FFABS(best_dts - dts) > AV_TIME_BASE && dts < best_dts)))))) {
+            // av_log(s, AV_LOG_WARNING, "stream %d, sample %d, dts %"PRId64"\n", i, msc->current_sample, dts);
+            if (!sample ||
+            	   (!(s->pb->seekable & AVIO_SEEKABLE_NORMAL) && current_sample->pos < sample->pos) ||
+               ((s->pb->seekable & AVIO_SEEKABLE_NORMAL) &&
+                ((msc->pb != s->pb && dts < best_dts) ||
+                	 (msc->pb == s->pb &&
+                  ((FFABS(best_dts - dts) <= AV_TIME_BASE && current_sample->pos < sample->pos) ||
+                   (FFABS(best_dts - dts) > AV_TIME_BASE && dts < best_dts)))))) {
                 sample = current_sample;
                 best_dts = dts;
                 *st = avst;
@@ -7037,24 +7053,23 @@ static int mov_change_extradata(MOVStreamContext *sc, AVPacket *pkt)
     return 0;
 }
 
-static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
-{
-    MOVContext *mov = s->priv_data;
-    MOVStreamContext *sc;
+static int mov_read_packet(AVFormatContext* s, AVPacket* pkt) {
+    MOVContext* mov = s->priv_data;
+    MOVStreamContext* sc;
     AVIndexEntry *sample;
     AVStream *st = NULL;
     int64_t current_index;
     int ret;
     mov->fc = s;
-
+	#if 0
     static char is_printed = 0;
-    if (!is_printed) {
-    		av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);  is_printed = 1;
-    }
+    if (!is_printed) { av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);  is_printed = 1; }
+	#endif
 
  retry:
     sample = mov_find_next_sample(s, &st);
     if (!sample || (mov->next_root_atom && sample->pos > mov->next_root_atom)) {
+    		av_log(s, AV_LOG_ERROR, "\tNo sample or other case\n");
         if (!mov->next_root_atom)
             return AVERROR_EOF;
         if ((ret = mov_switch_root(s, mov->next_root_atom, -1)) < 0)
@@ -7072,6 +7087,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     }
 
     if (st->discard != AVDISCARD_ALL) {
+    		// av_log(s, AV_LOG_ERROR, "\tNot discard all\n");
         int64_t ret64 = avio_seek(sc->pb, sample->pos, SEEK_SET);
         if (ret64 != sample->pos) {
             av_log(mov->fc, AV_LOG_ERROR, "stream %d, offset 0x%"PRIx64": partial file\n",
@@ -7083,12 +7099,13 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         }
 
         if( st->discard == AVDISCARD_NONKEY && 0==(sample->flags & AVINDEX_KEYFRAME) ) {
-            av_log(mov->fc, AV_LOG_DEBUG, "Nonkey frame from stream %d discarded due to AVDISCARD_NONKEY\n", sc->ffindex);
+            av_log(mov->fc, AV_LOG_ERROR, "Nonkey frame from stream %d discarded due to AVDISCARD_NONKEY\n", sc->ffindex);
             goto retry;
         }
 
         ret = av_get_packet(sc->pb, pkt, sample->size);
         if (ret < 0) {
+        		av_log(s, AV_LOG_ERROR, "\t av get pkt fail\n");
             if (should_retry(sc->pb, ret)) {
                 mov_current_sample_dec(sc);
             }
@@ -7096,7 +7113,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         }
         if (sc->has_palette) {
             uint8_t *pal;
-
+            	av_log(s, AV_LOG_ERROR, "[%s:%d]has palette\n", __FILE__, __LINE__);
             pal = av_packet_new_side_data(pkt, AV_PKT_DATA_PALETTE, AVPALETTE_SIZE);
             if (!pal) {
                 av_log(mov->fc, AV_LOG_ERROR, "Cannot append palette to packet\n");
@@ -7107,6 +7124,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         }
 #if CONFIG_DV_DEMUXER
         if (mov->dv_demux && sc->dv_audio_container) {
+        		av_log(s, AV_LOG_ERROR, "[%s:%d]de_demux and dv_audio_container\n", __FILE__, __LINE__);
             avpriv_dv_produce_packet(mov->dv_demux, pkt, pkt->data, pkt->size, pkt->pos);
             av_freep(&pkt->data);
             pkt->size = 0;
@@ -7127,6 +7145,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         pkt->flags |= AV_PKT_FLAG_DISCARD;
     }
     if (sc->ctts_data && sc->ctts_index < sc->ctts_count) {
+    		// av_log(s, AV_LOG_ERROR, "[%s:%d]update ctts\n", __FILE__, __LINE__);
         pkt->pts = pkt->dts + sc->dts_shift + sc->ctts_data[sc->ctts_index].duration;
         /* update ctts context */
         sc->ctts_sample++;
@@ -7136,13 +7155,14 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
             sc->ctts_sample = 0;
         }
     } else {
+    		// av_log(s, AV_LOG_ERROR, "[%s:%d]Set duration and pts\n", __FILE__, __LINE__);
         int64_t next_dts = (sc->current_sample < st->nb_index_entries) ?
             st->index_entries[sc->current_sample].timestamp : st->duration;
         pkt->duration = next_dts - pkt->dts;
         pkt->pts = pkt->dts;
     }
-    if (st->discard == AVDISCARD_ALL)
-        goto retry;
+    if (st->discard == AVDISCARD_ALL)goto retry;
+
     pkt->flags |= sample->flags & AVINDEX_KEYFRAME ? AV_PKT_FLAG_KEY : 0;
     pkt->pos = sample->pos;
 
@@ -7150,6 +7170,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     if (sc->stsc_data) {
         /* Keep track of the stsc index for the given sample, then check
         * if the stsd index is different from the last used one. */
+    		// av_log(s, AV_LOG_ERROR, "[%s:%d]stsc_data\n", __FILE__, __LINE__);
         sc->stsc_sample++;
         if (mov_stsc_index_valid(sc->stsc_index, sc->stsc_count) &&
             mov_get_stsc_samples(sc, sc->stsc_index) == sc->stsc_sample) {
@@ -7165,10 +7186,13 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         }
     }
 
-    if (mov->aax_mode)
+    if (mov->aax_mode) {
+    		av_log(s, AV_LOG_ERROR, "[%s:%d]aax_mode\n", __FILE__, __LINE__);
         aax_filter(pkt->data, pkt->size, mov);
+    }
 
     if (sc->cenc.aes_ctr) {
+    		av_log(s, AV_LOG_ERROR, "[%s:%d]cenc.aes_ctr\n", __FILE__, __LINE__);
         ret = cenc_filter(mov, sc, current_index, pkt->data, pkt->size);
         if (ret) {
             return ret;

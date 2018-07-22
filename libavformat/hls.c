@@ -314,17 +314,17 @@ static void reset_packet(AVPacket *pkt)
 }
 
 static struct playlist *new_playlist(HLSContext *c, const char *url,
-                                     const char *base)
-{
+                                     const char *base) {
+    av_log(c->ctx, AV_LOG_WARNING, 
+           "+ %s()\n\t url: %s\n with base: %s\n", __FUNCTION__, url, base);
     struct playlist *pls = av_mallocz(sizeof(struct playlist));
-    if (!pls)
-        return NULL;
+    if (!pls) return NULL;
+
     reset_packet(&pls->pkt);
     ff_make_absolute_url(pls->url, sizeof(pls->url), base, url);
-    pls->seek_timestamp = AV_NOPTS_VALUE;
-
-    pls->is_id3_timestamped = -1;
-    pls->id3_mpegts_timestamp = AV_NOPTS_VALUE;
+    pls->seek_timestamp         = AV_NOPTS_VALUE;
+    pls->is_id3_timestamped     = -1;
+    pls->id3_mpegts_timestamp   = AV_NOPTS_VALUE;
 
     dynarray_add(&c->playlists, &c->n_playlists, pls);
     return pls;
@@ -339,8 +339,7 @@ struct variant_info {
 };
 
 static struct variant *new_variant(HLSContext *c, struct variant_info *info,
-                                   const char *url, const char *base)
-{
+                                   const char *url, const char *base) {
     struct variant *var;
     struct playlist *pls;
 
@@ -365,8 +364,7 @@ static struct variant *new_variant(HLSContext *c, struct variant_info *info,
 }
 
 static void handle_variant_args(struct variant_info *info, const char *key,
-                                int key_len, char **dest, int *dest_len)
-{
+                                int key_len, char **dest, int *dest_len) {
     if (!strncmp(key, "BANDWIDTH=", key_len)) {
         *dest     =        info->bandwidth;
         *dest_len = sizeof(info->bandwidth);
@@ -729,7 +727,7 @@ static int parse_playlist(HLSContext* c, const char* url,
 
     av_log(NULL, AV_LOG_WARNING, "+ %s() with url: \n%s\n\n", __FUNCTION__, url);
     if (is_http && !in && c->http_persistent && c->playlist_pb) {
-    		av_log(c->ctx, AV_LOG_ERROR, "Should note in %d&&&&&&&&&\n", __LINE__);
+    	av_log(c->ctx, AV_LOG_ERROR, "Should note in %d \n", __LINE__);
         in = c->playlist_pb;
         ret = open_url_keepalive(c->ctx, &c->playlist_pb, url);
         if (ret == AVERROR_EXIT) {
@@ -769,7 +767,7 @@ static int parse_playlist(HLSContext* c, const char* url,
     }
 
     if (av_opt_get(in, "location", AV_OPT_SEARCH_CHILDREN, &new_url) >= 0) {
-    		av_log(c->ctx, AV_LOG_ERROR, "new_url: %s\n", new_url);
+    	av_log(c->ctx, AV_LOG_INFO, "new_url: %s\n", new_url);
         url = new_url;
     }
 
@@ -777,6 +775,7 @@ static int parse_playlist(HLSContext* c, const char* url,
     if (strcmp(line, "#EXTM3U")) { ret = AVERROR_INVALIDDATA;  goto fail; }
 
     if (pls) {
+        av_log(c->ctx, AV_LOG_ERROR, "Free privious pls\n");
         free_segment_list(pls);
         pls->finished = 0;
         pls->type = PLS_TYPE_UNSPECIFIED;
@@ -784,9 +783,9 @@ static int parse_playlist(HLSContext* c, const char* url,
 
     while (!avio_feof(in)) {
         read_chomp_line(in, line, sizeof(line));
-        av_log(c->ctx, AV_LOG_WARNING, "%s\n", line);
+        av_log(c->ctx, AV_LOG_INFO, "%s\n", line);
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
-        	    // av_log(NULL, AV_LOG_WARNING, "\n%s\n", line);
+            av_log(NULL, AV_LOG_WARNING, "Variant: \n%s\n", line);
             is_variant = 1;
             memset(&variant_info, 0, sizeof(variant_info));
             ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_variant_args,
@@ -862,6 +861,7 @@ static int parse_playlist(HLSContext* c, const char* url,
             continue;
         } else if (line[0]) {
             if (is_variant) {
+                av_log(c->ctx, AV_LOG_INFO, "Variant: %s, with url: %s\n", line, url);
                 if (!new_variant(c, &variant_info, line, url)) {
                     ret = AVERROR(ENOMEM);
                     goto fail;
@@ -945,8 +945,7 @@ fail:
     return ret;
 }
 
-static struct segment *current_segment(struct playlist *pls)
-{
+static struct segment *current_segment(struct playlist *pls) {
     return pls->segments[pls->cur_seq_no - pls->start_seq_no];
 }
 
@@ -965,15 +964,13 @@ enum ReadFromURLMode {
 
 static int read_from_url(struct playlist *pls, struct segment *seg,
                          uint8_t *buf, int buf_size,
-                         enum ReadFromURLMode mode)
-{
+                         enum ReadFromURLMode mode) {
     int ret;
-
-     /* limit read if the segment was only a part of a file */
     if (seg->size >= 0)
         buf_size = FFMIN(buf_size, seg->size - pls->cur_seg_offset);
 
-    if (mode == READ_COMPLETE) {
+    if (READ_COMPLETE == mode) {
+        av_log(NULL, AV_LOG_WARNING, "Read mode is complete\n");
         ret = avio_read(pls->input, buf, buf_size);
         if (ret != buf_size)
             av_log(NULL, AV_LOG_ERROR, "Could not read complete segment.\n");
@@ -1098,6 +1095,7 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
     while (1) {
         /* see if we can retrieve enough data for ID3 header */
         if (*len < ID3v2_HEADER_SIZE && buf_size >= ID3v2_HEADER_SIZE) {
+            av_log(NULL, AV_LOG_WARNING, "[%d]Call read_from_url \n", __LINE__);
             bytes = read_from_url(pls, seg, buf + *len, ID3v2_HEADER_SIZE - *len, READ_COMPLETE);
             if (bytes > 0) {
 
@@ -1150,6 +1148,7 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
 
             if (remaining > 0) {
                 /* read the rest of the tag in */
+                av_log(NULL, AV_LOG_WARNING, "[%d]Call read_from_url \n", __LINE__);
                 if (read_from_url(pls, seg, pls->id3_buf + id3_buf_pos, remaining, READ_COMPLETE) != remaining)
                     break;
                 id3_buf_pos += remaining;
@@ -1164,6 +1163,7 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
 
     /* re-fill buffer for the caller unless EOF */
     if (*len >= 0 && (fill_buf || *len == 0)) {
+        av_log(NULL, AV_LOG_WARNING, "[%d]Call read_from_url \n", __LINE__);
         bytes = read_from_url(pls, seg, buf + *len, buf_size - *len, READ_NORMAL);
 
         /* ignore error if we already had some data */
@@ -1184,12 +1184,13 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
         pls->is_id3_timestamped = (pls->id3_mpegts_timestamp != AV_NOPTS_VALUE);
 }
 
-static int open_input(HLSContext *c, struct playlist *pls, struct segment *seg, AVIOContext **in)
-{
+static int open_input(HLSContext *c, struct playlist *pls, struct segment *seg, AVIOContext **in) {
     AVDictionary *opts = NULL;
     int ret;
     int is_http = 0;
 
+    av_log(NULL, AV_LOG_ERROR, "[%s:%d] + %s() \n", __FILE__, __LINE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_ERROR, "\t pls: %s\n\t seg: %s \n", pls->url, seg->url);
     // broker prior HTTP options that should be consistent across requests
     av_dict_set(&opts, "user_agent", c->user_agent, 0);
     av_dict_set(&opts, "referer", c->referer, 0);
@@ -1286,7 +1287,7 @@ cleanup:
 
 static int update_init_section(struct playlist *pls, struct segment *seg)
 {
-    static const int max_init_section_size = 1024*1024;
+    static const int max_init_section_size = 1024 * 1024;
     HLSContext *c = pls->parent->priv_data;
     int64_t sec_size;
     int64_t urlsize;
@@ -1322,7 +1323,7 @@ static int update_init_section(struct playlist *pls, struct segment *seg)
     sec_size = FFMIN(sec_size, max_init_section_size);
 
     av_fast_malloc(&pls->init_sec_buf, &pls->init_sec_buf_size, sec_size);
-
+    av_log(NULL, AV_LOG_WARNING, "[%d]Call read_from_url \n", __LINE__);
     ret = read_from_url(pls, seg->init_section, pls->init_sec_buf,
                         pls->init_sec_buf_size, READ_COMPLETE);
     ff_format_io_close(pls->parent, &pls->input);
@@ -1341,15 +1342,13 @@ static int update_init_section(struct playlist *pls, struct segment *seg)
     return 0;
 }
 
-static int64_t default_reload_interval(struct playlist *pls)
-{
+static int64_t default_reload_interval(struct playlist *pls) {
     return pls->n_segments > 0 ?
-                          pls->segments[pls->n_segments - 1]->duration :
-                          pls->target_duration;
+               pls->segments[pls->n_segments - 1]->duration :
+               pls->target_duration;
 }
 
-static int playlist_needed(struct playlist *pls)
-{
+static int playlist_needed(struct playlist *pls) {
     AVFormatContext *s = pls->parent;
     int i, j;
     int stream_needed = 0;
@@ -1396,11 +1395,11 @@ static int playlist_needed(struct playlist *pls)
 
 static int read_data(void *opaque, uint8_t *buf, int buf_size)
 {
-    struct playlist *v = opaque;
-    HLSContext *c = v->parent->priv_data;
+    struct playlist *v  = opaque;
+    HLSContext *c       = v->parent->priv_data;
     int ret;
-    int just_opened = 0;
-    int reload_count = 0;
+    int just_opened     = 0;
+    int reload_count    = 0;
     struct segment *seg;
 
 restart:
@@ -1410,27 +1409,21 @@ restart:
     if (!v->input || (c->http_persistent && v->input_read_done)) {
         int64_t reload_interval;
 
-        /* Check that the playlist is still needed before opening a new
-         * segment. */
         v->needed = playlist_needed(v);
-
         if (!v->needed) {
-            av_log(v->parent, AV_LOG_INFO, "No longer receiving playlist %d\n",
+            av_log(v->parent, AV_LOG_ERROR, "No longer receiving playlist %d\n",
                 v->index);
             return AVERROR_EOF;
         }
 
-        /* If this is a live stream and the reload interval has elapsed since
-         * the last playlist reload, reload the playlists now. */
         reload_interval = default_reload_interval(v);
 
 reload:
-        reload_count++;
-        if (reload_count > c->max_reload)
-            return AVERROR_EOF;
+        ++reload_count;
+        if (reload_count > c->max_reload) return AVERROR_EOF;
+
         if (!v->finished &&
             av_gettime_relative() - v->last_load_time >= reload_interval) {
-        	    av_log(NULL, AV_LOG_INFO, "%d", __LINE__);
             if ((ret = parse_playlist(c, v->url, v, NULL)) < 0) {
                 if (ret != AVERROR_EXIT)
                     av_log(v->parent, AV_LOG_WARNING, "Failed to reload playlist %d\n",
@@ -1442,15 +1435,16 @@ reload:
              * interval of half the target duration. */
             reload_interval = v->target_duration / 2;
         }
+
+        av_log(NULL, AV_LOG_WARNING, "\t cur seq no: %d, start seq no: %d\n", v->cur_seq_no, v->start_seq_no);
         if (v->cur_seq_no < v->start_seq_no) {
-            av_log(NULL, AV_LOG_WARNING,
-                   "skipping %d segments ahead, expired from playlists\n",
-                   v->start_seq_no - v->cur_seq_no);
+            av_log(NULL, AV_LOG_WARNING, "skipping %d segments ahead, expired from playlists\n", v->start_seq_no - v->cur_seq_no);
             v->cur_seq_no = v->start_seq_no;
         }
+
         if (v->cur_seq_no >= v->start_seq_no + v->n_segments) {
-            if (v->finished)
-                return AVERROR_EOF;
+            if (v->finished) return AVERROR_EOF;
+
             while (av_gettime_relative() - v->last_load_time < reload_interval) {
                 if (ff_check_interrupt(c->interrupt_callback))
                     return AVERROR_EXIT;
@@ -1462,11 +1456,9 @@ reload:
 
         v->input_read_done = 0;
         seg = current_segment(v);
-
         /* load/update Media Initialization Section, if any */
         ret = update_init_section(v, seg);
-        if (ret)
-            return ret;
+        if (ret) return ret;
 
         if (c->http_multiple == 1 && v->input_next_requested) {
             FFSWAP(AVIOContext *, v->input, v->input_next);
@@ -1493,6 +1485,15 @@ reload:
         if (r >= 0) {
             c->http_multiple = strncmp((const char *)http_version_opt, "1.1", 3) == 0;
             av_freep(&http_version_opt);
+        }
+
+        {
+            #if 0
+            char *p1, *p2;  p1 = 0;
+            av_log(NULL, AV_LOG_ERROR, "[%s: %d] 可以走到这里？？？？？？？？？？？？？？？\n",
+                   __FILE__, __LINE__);
+            *p1 = *p2 = 0;
+            #endif
         }
     }
 
@@ -1810,24 +1811,20 @@ static int hls_read_header(AVFormatContext* s) {
     int ret = 0, i;
     int highest_cur_seq_no = 0;
 
-    av_log(s, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    av_log(s, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
     c->ctx                = s;
     c->interrupt_callback = &s->interrupt_callback;
     c->strict_std_compliance = s->strict_std_compliance;
 
-    c->first_packet = 1;
-    c->first_timestamp = AV_NOPTS_VALUE;
-    c->cur_timestamp = AV_NOPTS_VALUE;
+    c->first_packet     = 1;
+    c->first_timestamp  = AV_NOPTS_VALUE;
+    c->cur_timestamp    = AV_NOPTS_VALUE;
 
     if (u) {
-    		av_log(s, AV_LOG_INFO, "\t Custom IO\n");
-        // get the previous user agent & set back to null if string size is zero
+    	av_log(s, AV_LOG_INFO, "\t Use default IO\n");
         update_options(&c->user_agent, "user_agent", u);
-        // get the previous cookies & set back to null if string size is zero
-        update_options(&c->cookies, "cookies", u);
-        // get the previous headers & set back to null if string size is zero
-        update_options(&c->headers, "headers", u);
-        // get the previous http proxt & set back to null if string size is zero
+        update_options(&c->cookies,    "cookies",    u);
+        update_options(&c->headers,    "headers",    u);
         update_options(&c->http_proxy, "http_proxy", u);
     }
 
@@ -2102,7 +2099,7 @@ static int hls_read_packet(AVFormatContext* s, AVPacket* pkt) {
     recheck_discard_flags(s, c->first_packet);
     c->first_packet = 0;
 
-    av_log(s, AV_LOG_WARNING, "\t + %s\n", __FUNCTION__);
+    // av_log(s, AV_LOG_WARNING, "\t + %s\n", __FUNCTION__);
     for (i = 0; i < c->n_playlists; ++i) {
         struct playlist* pls = c->playlists[i];
         /* Make sure we've got one buffered packet from each open playlist
@@ -2324,14 +2321,16 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
 }
 
 static int hls_probe(AVProbeData* p) {
-	av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
-	av_log(NULL, AV_LOG_WARNING, "\n%s\n", p->buf);
+	av_log(NULL, AV_LOG_WARNING, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+	av_log(NULL, AV_LOG_INFO, "\n%s\n", p->buf);
     if (strncmp(p->buf, "#EXTM3U", 7)) return 0;
 
-    if (strstr(p->buf, "#EXT-X-STREAM-INF:")     		||
+    if (strstr(p->buf, "#EXT-X-STREAM-INF:")     	||
         strstr(p->buf, "#EXT-X-TARGETDURATION:") 	||
         strstr(p->buf, "#EXT-X-MEDIA-SEQUENCE:"))
         return AVPROBE_SCORE_MAX;
+
+    av_log(NULL, AV_LOG_INFO, "- %s()\n", __FUNCTION__);
     return 0;
 }
 

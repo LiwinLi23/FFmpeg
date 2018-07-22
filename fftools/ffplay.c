@@ -2723,7 +2723,7 @@ static int read_thread(void* arg) {
 
     ic->interrupt_callback.callback = decode_interrupt_cb;
     ic->interrupt_callback.opaque = is;
-    av_log(NULL, AV_LOG_WARNING, "Decode interrupt cb: %x\n", decode_interrupt_cb);
+    av_log(NULL, AV_LOG_INFO, "Decode interrupt cb: %x\n", decode_interrupt_cb);
     av_log(NULL, AV_LOG_WARNING, "LT disable the scan all pmts\n");
 #if 0
     if (!av_dict_get(format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE)) {

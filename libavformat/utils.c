@@ -416,9 +416,11 @@ static int init_input(AVFormatContext* s, const char* filename, AVDictionary** o
     int ret;
     AVProbeData pd = { filename, NULL, 0 };
     int score = AVPROBE_SCORE_RETRY;
-    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n filename: %s\n options size: %d\n", 
+           __FUNCTION__, filename, av_dict_count(*options));
+
     if (s->pb) {
-    		av_log(NULL, AV_LOG_INFO, "\t has inited avio\n");
+    	av_log(NULL, AV_LOG_ERROR, "\t [%s:%d]&&&&& S has pb\n", __FILE__, __LINE__);
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
         if (!s->iformat)
             return av_probe_input_buffer2(s->pb, &s->iformat, filename,
@@ -431,7 +433,7 @@ static int init_input(AVFormatContext* s, const char* filename, AVDictionary** o
 
     if ((s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
         (!s->iformat && (s->iformat = av_probe_input_format2(&pd, 0, &score)))) {
-    		av_log(NULL, AV_LOG_INFO, "\t %d return score: %d\n", __LINE__, score);
+    	av_log(NULL, AV_LOG_ERROR, "\t [%s:%d] return score: %d\n", __FILE__, __LINE__, score);
         return score;
     }
 
@@ -544,17 +546,17 @@ int avformat_open_input(AVFormatContext** ps, const char* filename,
     }
 
     if (fmt) {
-    		av_log(NULL, AV_LOG_INFO, "\t Customize Input format\n");
-    		s->iformat = fmt;
+    	av_log(NULL, AV_LOG_INFO, "\t Customize Input format\n");
+    	s->iformat = fmt;
     }
 
     if (options) {
-    		av_log(NULL, AV_LOG_ERROR, "\tCustomize options size: %d\n", av_dict_count(*options));
+    	av_log(s, AV_LOG_INFO, "\tCustomize options size: %d\n", av_dict_count(*options));
         av_dict_copy(&tmp, *options, 0);
     }
 
     if (s->pb) {
-    	    av_log(NULL, AV_LOG_ERROR, "\tCustomize IOContext\n");
+    	av_log(NULL, AV_LOG_ERROR, "\tCustomize IOContext\n");
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
     }
 
@@ -569,7 +571,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
 #endif
     if ((ret = init_input(s, filename, &tmp)) < 0) goto fail;
 
-    if (s->iformat) av_log(NULL, AV_LOG_INFO, "[%d] format_name: %s\n\n\n\n", __LINE__, s->iformat->name);
+    if (s->iformat) av_log(NULL, AV_LOG_INFO, "[%s:%d] format_name: %s\n", __FILE__, __LINE__, s->iformat->name);
 
     s->probe_score = ret;
 
@@ -853,7 +855,7 @@ int ff_read_packet(AVFormatContext *s, AVPacket *pkt)
         pkt->data = NULL;
         pkt->size = 0;
         av_init_packet(pkt);
-        av_log(s, AV_LOG_WARNING, "\t Call format's read_pkt\n");
+        // av_log(s, AV_LOG_WARNING, "\t Call format's read_pkt\n");
         ret = s->iformat->read_packet(s, pkt);
         if (ret < 0) {
             /* Some demuxers return FFERROR_REDO when they consume
@@ -1649,7 +1651,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
             }
             got_packet = 1;
         } else if (st->discard < AVDISCARD_ALL) {
-        		av_log(s, AV_LOG_WARNING, "\t Don't discard all\n");
+        		// av_log(s, AV_LOG_WARNING, "\t Don't discard all\n");
             if ((ret = parse_packet(s, &cur_pkt, cur_pkt.stream_index)) < 0)
                 return ret;
             st->codecpar->sample_rate = st->internal->avctx->sample_rate;
@@ -1673,7 +1675,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
     }    // end of while
 
     if (!got_packet && s->internal->parse_queue) {
-    		av_log(s, AV_LOG_WARNING, "\t read from pkt buf\n");
+    		// av_log(s, AV_LOG_WARNING, "\t read from pkt buf\n");
         ret = read_from_packet_buffer(&s->internal->parse_queue, &s->internal->parse_queue_end, pkt);
     }
 

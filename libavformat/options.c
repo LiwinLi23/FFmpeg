@@ -100,21 +100,15 @@ static const AVClass av_format_context_class = {
 
 static int io_open_default(AVFormatContext *s, AVIOContext **pb,
                            const char *url, int flags, AVDictionary **options) {
-    int loglevel;
     av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
-    if (!strcmp(url, s->url) ||
-        s->iformat && !strcmp(s->iformat->name, "image2") ||
-        s->oformat && !strcmp(s->oformat->name, "image2")) {
-        loglevel = AV_LOG_DEBUG;
-    } else
-        loglevel = AV_LOG_INFO;
-
-    av_log(s, loglevel, "Opening \'%s\' for %s\n", url, flags & AVIO_FLAG_WRITE ? "writing" : "reading");
+    av_log(s, AV_LOG_INFO, "Opening \'%s\' for %s\n", url, flags & AVIO_FLAG_WRITE ? "writing" : "reading");
 
 #if FF_API_OLD_OPEN_CALLBACKS
 FF_DISABLE_DEPRECATION_WARNINGS
-    if (s->open_cb)
+    if (s->open_cb) {
+        av_log(s, AV_LOG_ERROR, "[%s:%d]Call open cb\n", __FILE__, __LINE__);
         return s->open_cb(s, pb, url, flags, &s->interrupt_callback, options);
+    }
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
 
@@ -129,14 +123,14 @@ static void io_close_default(AVFormatContext *s, AVIOContext *pb)
 static void avformat_get_context_defaults(AVFormatContext* s) {
     memset(s, 0, sizeof(AVFormatContext));
     s->av_class = &av_format_context_class;
-    s->io_open = io_open_default;
+    s->io_open  = io_open_default;
     s->io_close = io_close_default;
     av_opt_set_defaults(s);
 }
 
 AVFormatContext* avformat_alloc_context(void) {
+    av_log(NULL, AV_LOG_INFO, "+ %s() in [%s:%d]\n", __FUNCTION__, __FILE__, __LINE__);
     AVFormatContext* ic = av_malloc(sizeof(AVFormatContext));
-    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     if (!ic) return ic;
 
     avformat_get_context_defaults(ic);
