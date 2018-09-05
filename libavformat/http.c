@@ -520,13 +520,13 @@ fail:
 }
 
 static int http_open(URLContext *h, const char *uri, int flags,
-                     AVDictionary **options)
-{
+                     AVDictionary **options) {
     HTTPContext *s = h->priv_data;
     int ret;
 
-    av_log(NULL, AV_LOG_WARNING, "+ %s(%s)\n", __FUNCTION__, uri);
-    if( s->seekable == 1 )
+    av_log(NULL, AV_LOG_WARNING, "[%s:%d]+ %s(%s)\n"
+           "flags: %d\n", __FILE__, __LINE__, __FUNCTION__, uri, flags);
+    if (s->seekable == 1)
         h->is_streamed = 0;
     else
         h->is_streamed = 1;
@@ -569,6 +569,7 @@ static int http_accept(URLContext *s, URLContext **c)
     URLContext *sl = sc->hd;
     URLContext *cl = NULL;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     av_assert0(sc->listen);
     if ((ret = ffurl_alloc(c, s->filename, s->flags, &sl->interrupt_callback)) < 0)
         goto fail;
@@ -1569,8 +1570,8 @@ static int store_icy(URLContext *h, int size)
     return FFMIN(size, remaining);
 }
 
-static int http_read(URLContext *h, uint8_t *buf, int size)
-{
+static int http_read(URLContext *h, uint8_t *buf, int size) {
+    // av_log(NULL, AV_LOG_INFO, "+ %s() size: %d\n", __FUNCTION__, size);
     HTTPContext *s = h->priv_data;
 
     if (s->icy_metaint > 0) {

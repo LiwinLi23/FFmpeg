@@ -85,8 +85,8 @@ int ffio_init_context(AVIOContext *s,
                   void *opaque,
                   int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
                   int (*write_packet)(void *opaque, uint8_t *buf, int buf_size),
-                  int64_t (*seek)(void *opaque, int64_t offset, int whence))
-{
+                  int64_t (*seek)(void *opaque, int64_t offset, int whence)) {
+    av_log(NULL, AV_LOG_INFO, "[%s:%d]+ %s()\n", __FILE__, __LINE__, __FUNCTION__);
     memset(s, 0, sizeof(AVIOContext));
 
     s->buffer      = buffer;
@@ -530,6 +530,7 @@ static int read_packet_wrapper(AVIOContext *s, uint8_t *buf, int size)
 {
     int ret;
 
+    // av_log(NULL, AV_LOG_INFO, "+ %s() size: %d\n", __FUNCTION__, size);
     if (!s->read_packet)
         return AVERROR(EINVAL);
     ret = s->read_packet(s->opaque, buf, size);
@@ -649,6 +650,7 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
 {
     int len, size1;
 
+    // av_log(NULL, AV_LOG_INFO, "+ %s() size: %d\n", __FUNCTION__, size);
     size1 = size;
     while (size > 0) {
         len = FFMIN(s->buf_end - s->buf_ptr, size);
@@ -930,6 +932,7 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
     uint8_t *buffer = NULL;
     int buffer_size, max_packet_size;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     max_packet_size = h->max_packet_size;
     if (max_packet_size) {
         buffer_size = max_packet_size; /* no need to bufferize more than one packet */

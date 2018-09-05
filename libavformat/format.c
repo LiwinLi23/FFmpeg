@@ -158,7 +158,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
         ID3_GREATER_MAX_PROBE,
     } nodat = NO_ID3;
 
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!lpd.buf)
         lpd.buf = (unsigned char *) zerobuffer;
 
@@ -183,19 +183,25 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
         if (fmt1->read_probe) {
             score = fmt1->read_probe(&lpd);
             if (score)
-                av_log(NULL, AV_LOG_TRACE, "Probing %s score:%d size:%d\n", fmt1->name, score, lpd.buf_size);
+                av_log(NULL, AV_LOG_INFO, "Probing %s score:%d size:%d\n", fmt1->name, score, lpd.buf_size);
             if (fmt1->extensions && av_match_ext(lpd.filename, fmt1->extensions)) {
                 switch (nodat) {
                 case NO_ID3:
                     score = FFMAX(score, 1);
+                    av_log(NULL, AV_LOG_INFO, "[%s]: probe break\n", __LINE__);
                     break;
+
                 case ID3_GREATER_PROBE:
                 case ID3_ALMOST_GREATER_PROBE:
                     score = FFMAX(score, AVPROBE_SCORE_EXTENSION / 2 - 1);
+                    av_log(NULL, AV_LOG_INFO, "[%s]: probe break\n", __LINE__);
                     break;
+
                 case ID3_GREATER_MAX_PROBE:
                     score = FFMAX(score, AVPROBE_SCORE_EXTENSION);
+                    av_log(NULL, AV_LOG_INFO, "[%s]: probe break\n", __LINE__);
                     break;
+
                 }
             }
         } else if (fmt1->extensions) {
@@ -214,6 +220,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
         } else if (score == score_max)
             fmt = NULL;
     }
+
     if (nodat == ID3_GREATER_PROBE)
         score_max = FFMIN(AVPROBE_SCORE_EXTENSION / 2 - 1, score_max);
     *score_ret = score_max;
@@ -223,7 +230,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
 
 AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int *score_max) {
     int score_ret;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     AVInputFormat *fmt = av_probe_input_format3(pd, is_opened, &score_ret);
     if (score_ret > *score_max) {
         *score_max = score_ret;
@@ -280,7 +287,7 @@ int av_probe_input_buffer2(AVIOContext* pb, AVInputFormat** fmt,
     }
 #endif
 
-    av_log(NULL, AV_LOG_INFO, "PROBE_BUF_MAX: %u\n", PROBE_BUF_MAX);
+    av_log(NULL, AV_LOG_INFO, "PROBE_BUF_MIN: %u, PROBE_BUF_MAX: %u\n", PROBE_BUF_MIN, PROBE_BUF_MAX);
     for (probe_size = PROBE_BUF_MIN; probe_size <= max_probe_size && !*fmt;
          probe_size = FFMIN(probe_size << 1,
                             FFMAX(max_probe_size, probe_size + 1))) {

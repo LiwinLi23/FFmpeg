@@ -2366,7 +2366,7 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
                         types |= 1<<st->codecpar->codec_type;
                 }
                 if ((types & (1<<AVMEDIA_TYPE_AUDIO) && types & (1<<AVMEDIA_TYPE_VIDEO)) || pos > 100000) {
-                    av_log(ts->stream, AV_LOG_DEBUG, "All programs have pmt, headers found\n");
+                    av_log(ts->stream, AV_LOG_INFO, "All programs have pmt, headers found\n");
                     ts->stream->ctx_flags &= ~AVFMTCTX_NOHEADER;
                 }
             }
@@ -2548,6 +2548,7 @@ static int mpegts_probe(AVProbeData *p)
 #define CHECK_COUNT 10
 #define CHECK_BLOCK 100
 
+    av_log(NULL, AV_LOG_INFO, "+ %s\n", __FUNCTION__);
     if (!check_count)
         return 0;
 
@@ -2565,7 +2566,7 @@ static int mpegts_probe(AVProbeData *p)
     maxscore = maxscore * CHECK_COUNT / CHECK_BLOCK;
 
     ff_dlog(0, "TS score: %d %d\n", sumscore, maxscore);
-
+    av_log(NULL, AV_LOG_INFO, "- %s() %d %d\n", __FUNCTION__, sumscore, maxscore);
     if        (check_count > CHECK_COUNT && sumscore > 6) {
         return AVPROBE_SCORE_MAX   + sumscore - CHECK_COUNT;
     } else if (check_count >= CHECK_COUNT && sumscore > 6) {

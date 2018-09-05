@@ -285,7 +285,7 @@ static void free_playlist_list(HLSContext *c)
 static void free_variant_list(HLSContext *c)
 {
     int i;
-    for (i = 0; i < c->n_variants; i++) {
+    for (i = 0; i < c->n_variants; ++i) {
         struct variant *var = c->variants[i];
         av_freep(&var->playlists);
         av_free(var);
@@ -338,11 +338,12 @@ struct variant_info {
     char subtitles[MAX_FIELD_LEN];
 };
 
-static struct variant *new_variant(HLSContext *c, struct variant_info *info,
+static struct variant* new_variant(HLSContext *c, struct variant_info *info,
                                    const char *url, const char *base) {
     struct variant *var;
     struct playlist *pls;
-
+    av_log(NULL, AV_LOG_INFO, "+ %s()\nurl: %s\nbase: %s\n", __FUNCTION__, 
+        (url ? url : ""), (base ? base : ""));
     pls = new_playlist(c, url, base);
     if (!pls)
         return NULL;
@@ -589,10 +590,12 @@ static void handle_rendition_args(struct rendition_info *info, const char *key,
  * allocated the variant and playlist already)
  * *pls == NULL  => Master Playlist or parentless Media Playlist
  * *pls != NULL => parented Media Playlist, playlist+variant allocated */
-static int ensure_playlist(HLSContext *c, struct playlist **pls, const char *url)
-{
+static int ensure_playlist(HLSContext* c, struct playlist** pls, const char* url) {
+    av_log(c->ctx, AV_LOG_INFO, "[%s]+ %s()\nwith url: %s\n", __FILE__, __FUNCTION__, url);
     if (*pls)
         return 0;
+
+    av_log(NULL, AV_LOG_ERROR, "ENOMEM: %d, AVERROR(ENOMEM): %d\n", ENOMEM, AVERROR(ENOMEM));
     if (!new_variant(c, NULL, url, NULL))
         return AVERROR(ENOMEM);
     *pls = c->playlists[c->n_playlists - 1];
@@ -783,7 +786,7 @@ static int parse_playlist(HLSContext* c, const char* url,
 
     while (!avio_feof(in)) {
         read_chomp_line(in, line, sizeof(line));
-        av_log(c->ctx, AV_LOG_INFO, "%s\n", line);
+        // av_log(c->ctx, AV_LOG_INFO, "%s\n", line);
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
             av_log(NULL, AV_LOG_WARNING, "Variant: \n%s\n", line);
             is_variant = 1;
@@ -813,19 +816,19 @@ static int parse_playlist(HLSContext* c, const char* url,
                                &info);
             new_rendition(c, &info, url);
         } else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {
-        		// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
-        		ret = ensure_playlist(c, &pls, url);
+        	av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        	ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
             pls->target_duration = strtoll(ptr, NULL, 10) * AV_TIME_BASE;
         } else if (av_strstart(line, "#EXT-X-MEDIA-SEQUENCE:", &ptr)) {
-        		// av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+            av_log(c->ctx, AV_LOG_WARNING, "%s\n", line);
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
             pls->start_seq_no = atoi(ptr);
         } else if (av_strstart(line, "#EXT-X-PLAYLIST-TYPE:", &ptr)) {
-            // av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+            av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
@@ -834,7 +837,7 @@ static int parse_playlist(HLSContext* c, const char* url,
             else if (!strcmp(ptr, "VOD"))
                 pls->type = PLS_TYPE_VOD;
         } else if (av_strstart(line, "#EXT-X-MAP:", &ptr)) {
-        	    // av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
+        	av_log(NULL, AV_LOG_WARNING, "\n %s\n", line);
             struct init_section_info info = {{0}};
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
@@ -869,8 +872,9 @@ static int parse_playlist(HLSContext* c, const char* url,
                 is_variant = 0;
             }
             if (is_segment) {
-                struct segment *seg;
+                struct segment* seg;
                 if (!pls) {
+                    av_log(NULL, AV_LOG_WARNING, "This is root m3u8\n");
                     if (!new_variant(c, 0, url, NULL)) {
                         ret = AVERROR(ENOMEM);
                         goto fail;
@@ -1807,14 +1811,14 @@ static int hls_close(AVFormatContext *s)
 
 static int hls_read_header(AVFormatContext* s) {
     void* u = (s->flags & AVFMT_FLAG_CUSTOM_IO) ? NULL : s->pb;
-    HLSContext *c = s->priv_data;
+    HLSContext* c = s->priv_data;
     int ret = 0, i;
     int highest_cur_seq_no = 0;
 
-    av_log(s, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
-    c->ctx                = s;
-    c->interrupt_callback = &s->interrupt_callback;
-    c->strict_std_compliance = s->strict_std_compliance;
+    av_log(s, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    c->ctx                      = s;
+    c->interrupt_callback       = &s->interrupt_callback;
+    c->strict_std_compliance    = s->strict_std_compliance;
 
     c->first_packet     = 1;
     c->first_timestamp  = AV_NOPTS_VALUE;
@@ -2321,8 +2325,9 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
 }
 
 static int hls_probe(AVProbeData* p) {
-	av_log(NULL, AV_LOG_WARNING, "[%s] + %s()\n", __FILE__, __FUNCTION__);
-	av_log(NULL, AV_LOG_INFO, "\n%s\n", p->buf);
+	av_log(NULL, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__);
+	av_log(NULL, AV_LOG_INFO, "filename: %s\nbufsize: %d\nmimetype: %s\n%s\n", 
+        p->filename, p->buf_size, p->mime_type, p->buf);
     if (strncmp(p->buf, "#EXTM3U", 7)) return 0;
 
     if (strstr(p->buf, "#EXT-X-STREAM-INF:")     	||

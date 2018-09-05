@@ -1,1 +1,1 @@
-./configure --disable-encoders --enable-ffplay --prefix=/Volumes/LT_SD0/usr
+./configure --disable-encoders --enable-ffplay --prefix=/Users/litao/dev_tools/my_usr

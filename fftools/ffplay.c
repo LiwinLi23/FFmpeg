@@ -2755,7 +2755,6 @@ static int read_thread(void* arg) {
     if (find_stream_info) {
         AVDictionary** opts = setup_find_stream_info_opts(ic, codec_opts);
         int orig_nb_streams = ic->nb_streams;
-        av_log(NULL, AV_LOG_ERROR, "Call avformat_find_steam_info()\n");
         err = avformat_find_stream_info(ic, opts);
         for (i = 0; i < orig_nb_streams; ++i)
             av_dict_free(&opts[i]);
@@ -3720,12 +3719,6 @@ https://dco4urblvsasc.cloudfront.net/811/81095_ywfZjAuP/game/index.m3u8
 rtmp://live.hkstv.hk.lxdns.com/live/hks
 
 rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov
-#endif
-#if 0
-#EXTM3U
-#EXT-X-STREAM-INF:PROGRAM-ID=1, BANDWIDTH=414000
-http://live.hkstv.hk.lxdns.com/live/hks/playlist.m3u8?wsSession=abf4cd64ac36e7c62be19805-152863587071676&wsIPSercert=f8cd9ee27d627558586a47e964bc5dba&wsMonitor=-1
-
 #endif
 
 

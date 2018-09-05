@@ -73,13 +73,14 @@ const AVClass ffurl_context_class = {
 static int url_alloc_for_protocol(URLContext **puc, const URLProtocol *up,
                                   const char *filename, int flags,
                                   const AVIOInterruptCB *int_cb) {
-    URLContext *uc;
+    URLContext* uc;
     int err;
 
 #if CONFIG_NETWORK
     if (up->flags & URL_PROTOCOL_FLAG_NETWORK && !ff_network_init())
         return AVERROR(EIO);
 #endif
+
     if ((flags & AVIO_FLAG_READ) && !up->url_read) {
         av_log(NULL, AV_LOG_ERROR,
                "Impossible to open the '%s' protocol for reading\n", up->name);
@@ -287,6 +288,7 @@ static const struct URLProtocol* url_find_protocol(const char* filename) {
 
 int ffurl_alloc(URLContext** puc, const char* filename, int flags,
                 const AVIOInterruptCB* int_cb) {
+    av_log(NULL, AV_LOG_INFO, "[%s:%d] + %s()\n", __FILE__, __LINE__, __FUNCTION__);
     const URLProtocol* p = url_find_protocol(filename);
     if (p)
        return url_alloc_for_protocol(puc, p, filename, flags, int_cb);
