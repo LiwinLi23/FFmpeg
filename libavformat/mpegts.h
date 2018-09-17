@@ -24,17 +24,17 @@
 
 #include "avformat.h"
 
-#define TS_FEC_PACKET_SIZE 204
+#define TS_FEC_PACKET_SIZE  204
 #define TS_DVHS_PACKET_SIZE 192
-#define TS_PACKET_SIZE 188
-#define TS_MAX_PACKET_SIZE 204
+#define TS_PACKET_SIZE      188
+#define TS_MAX_PACKET_SIZE  204
 
 #define NB_PID_MAX 8192
 #define MAX_SECTION_SIZE 4096
 
 /* pids */
-#define PAT_PID                 0x0000
-#define SDT_PID                 0x0011
+#define PAT_PID                 0x0000              // Program Associated Table Pkt_ID
+#define SDT_PID                 0x0011              // Service Descriptor Table Pkt_ID
 
 /* table ids */
 #define PAT_TID   0x00

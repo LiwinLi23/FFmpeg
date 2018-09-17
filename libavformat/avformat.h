@@ -490,6 +490,12 @@ typedef struct AVProbeData {
 
 #define AVFMT_SEEK_TO_PTS   0x4000000 /**< Seeking is based on PTS */
 
+#define AVFMT_CRASH()                     \
+    do {                                  \
+        av_log(NULL, AV_LOG_FATAL, "[%s:%d]Crash here\n", __FILE__, __LINE__); \
+        char* crash_ptr = NULL; *crash_ptr = (char)NULL; \
+    } while (0)                           \
+
 /**
  * @addtogroup lavf_encoding
  * @{

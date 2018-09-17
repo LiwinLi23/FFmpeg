@@ -196,6 +196,8 @@ static int http_open_cnx_internal(URLContext *h, AVDictionary **options)
     int port, use_proxy, err, location_changed = 0;
     HTTPContext *s = h->priv_data;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+
     av_url_split(proto, sizeof(proto), auth, sizeof(auth),
                  hostname, sizeof(hostname), &port,
                  path1, sizeof(path1), s->location);
@@ -524,8 +526,8 @@ static int http_open(URLContext *h, const char *uri, int flags,
     HTTPContext *s = h->priv_data;
     int ret;
 
-    av_log(NULL, AV_LOG_WARNING, "[%s:%d]+ %s(%s)\n"
-           "flags: %d\n", __FILE__, __LINE__, __FUNCTION__, uri, flags);
+    // av_log(NULL, AV_LOG_WARNING, "[%s:%d]+ %s(%s)\n"
+    //        "flags: %d\n", __FILE__, __LINE__, __FUNCTION__, uri, flags);
     if (s->seekable == 1)
         h->is_streamed = 0;
     else
@@ -1215,6 +1217,8 @@ static int http_connect(URLContext *h, const char *path, const char *local_path,
     // since it allows us to detect more reliably if a (non-conforming)
     // server supports seeking by analysing the reply headers.
     if (!has_header(s->headers, "\r\nRange: ") && !post && (s->off > 0 || s->end_off || s->seekable == -1)) {
+        av_log(NULL, AV_LOG_INFO, "[%s:%d]Request range[%"PRIu64"-%"PRId64"]\n", 
+               __FILE__, __LINE__, s->off, s->end_off);
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRIu64"-", s->off);
         if (s->end_off)

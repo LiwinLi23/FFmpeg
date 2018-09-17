@@ -1219,8 +1219,9 @@ static int open_input(HLSContext *c, struct playlist *pls, struct segment *seg, 
         av_dict_set_int(&opts, "end_offset", seg->url_offset + seg->size, 0);
     }
 
-    av_log(pls->parent, AV_LOG_INFO, "HLS request for url '%s', offset %"PRId64", playlist %d\n",
-           seg->url, seg->url_offset, pls->index);
+    av_log(pls->parent, AV_LOG_INFO, "HLS request for url '%s', \n"
+           "offset %"PRId64", end_offset: %"PRId64", playlist %d\n",
+           seg->url, seg->url_offset, seg->url_offset + seg->size, pls->index);
 
     if (seg->key_type == KEY_NONE) {
         ret = open_url(pls->parent, in, seg->url, c->avio_opts, opts, &is_http);
@@ -1413,7 +1414,7 @@ static int read_data(void *opaque, uint8_t *buf, int buf_size)
     int reload_count    = 0;
     struct segment *seg;
 
-    // av_log(NULL, AV_LOG_ERROR, "+ %s with pls: %s\n", __FUNCTION__, v->url);
+    av_log(NULL, AV_LOG_INFO, "+ %s with pls: %s\n", __FUNCTION__, v->url);
 restart:
     if (!v->needed)
         return AVERROR_EOF;
@@ -1488,6 +1489,7 @@ reload:
                    v->cur_seq_no,
                    v->index);
             v->cur_seq_no += 1;
+            av_log(NULL, AV_LOG_ERROR, "%d cur seq no: %d\n", __LINE__, v->cur_seq_no);
             goto reload;
         }
         just_opened = 1;
@@ -1552,9 +1554,8 @@ reload:
     } else {
         ff_format_io_close(v->parent, &v->input);
     }
+    
     v->cur_seq_no++;
-
-    // av_log(NULL, AV_LOG_ERROR, "[%d]Set cur_seq_no: %d\n", __LINE__, c->cur_seq_no);
     c->cur_seq_no = v->cur_seq_no;
 
     goto restart;
@@ -2116,6 +2117,7 @@ static int hls_read_packet(AVFormatContext* s, AVPacket* pkt) {
     recheck_discard_flags(s, c->first_packet);
     c->first_packet = 0;
 
+    // av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);
     if (c->n_playlists > 1)
         av_log(s, AV_LOG_ERROR, "[%s:%d]pls num: %d\n", __FILE__, __LINE__, c->n_playlists);
 
@@ -2135,6 +2137,7 @@ static int hls_read_packet(AVFormatContext* s, AVPacket* pkt) {
                     reset_packet(&pls->pkt);
                     break;
                 } else {
+                    // av_log(NULL, AV_LOG_ERROR, "pkt size: %d\n", pls->pkt.size);
                     /* stream_index check prevents matching picture attachments etc. */
                     if (pls->is_id3_timestamped && pls->pkt.stream_index == 0) {
                         /* audio elementary streams are id3 timestamped */

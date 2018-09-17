@@ -167,7 +167,7 @@ int ffurl_connect(URLContext *uc, AVDictionary **options) {
     int err;
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
-    av_log(NULL, AV_LOG_ERROR, "[%s] + %s()\n", __FILE__, __FUNCTION__);
+    av_log(NULL, AV_LOG_INFO, "[%s] + %s()\n", __FILE__, __FUNCTION__);
     if (!options) {
     		av_log(NULL, AV_LOG_WARNING, "has options\n");
     		options = &tmp_opts;

@@ -328,12 +328,12 @@ void av_log_default_callback(void* ptr, int level, const char* fmt, va_list vl)
     if (print_prefix && (flags & AV_LOG_SKIP_REPEATED) && !strcmp(line, prev) &&
         *line && line[strlen(line) - 1] != '\r'){
         count++;
-        if (is_atty == 1)
-            fprintf(stderr, "    Last message repeated %d times\r", count);
+        // if (is_atty == 1)
+        //    fprintf(stderr, "    Last message repeated %d times\r", count);
         goto end;
     }
     if (count > 0) {
-        fprintf(stderr, "    Last message repeated %d times\n", count);
+        // fprintf(stderr, "    Last message repeated %d times\n", count);
         count = 0;
     }
     strcpy(prev, line);
