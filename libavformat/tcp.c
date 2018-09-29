@@ -77,6 +77,8 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     char portstr[10];
     s->open_timeout = 5000000;
 
+    av_log(NULL, AV_LOG_ERROR, "+ %s() \nuri: %s\n", __FUNCTION__, uri);
+
     av_url_split(proto, sizeof(proto), NULL, 0, hostname, sizeof(hostname),
         &port, path, sizeof(path), uri);
     if (strcmp(proto, "tcp"))
@@ -120,6 +122,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
                hostname, gai_strerror(ret));
         return AVERROR(EIO);
     }
+    av_log(NULL, AV_LOG_INFO, "\t TCP get addrinfo pass\n");
 
     cur_ai = ai;
 
@@ -166,6 +169,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         // Socket descriptor already closed here. Safe to overwrite to client one.
         fd = ret;
     } else {
+        av_log(NULL, AV_LOG_INFO, "\t TCP call ff connect\n");
         if ((ret = ff_listen_connect(fd, cur_ai->ai_addr, cur_ai->ai_addrlen,
                                      s->open_timeout / 1000, h, !!cur_ai->ai_next)) < 0) {
 
@@ -219,6 +223,7 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
     TCPContext *s = h->priv_data;
     int ret;
 
+    // av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     if (!(h->flags & AVIO_FLAG_NONBLOCK)) {
         ret = ff_network_wait_fd_timeout(s->fd, 0, h->rw_timeout, &h->interrupt_callback);
         if (ret)
@@ -235,6 +240,7 @@ static int tcp_write(URLContext *h, const uint8_t *buf, int size)
     TCPContext *s = h->priv_data;
     int ret;
 
+    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     if (!(h->flags & AVIO_FLAG_NONBLOCK)) {
         ret = ff_network_wait_fd_timeout(s->fd, 1, h->rw_timeout, &h->interrupt_callback);
         if (ret)

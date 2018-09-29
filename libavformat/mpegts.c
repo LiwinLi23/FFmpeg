@@ -591,7 +591,7 @@ static int get_packet_size(const uint8_t *buf, int size)
 }
 
 typedef struct SectionHeader {
-    uint8_t tid;
+    uint8_t tid;                                // LT: Table ID
     uint16_t id;
     uint8_t version;
     uint8_t sec_num;
@@ -664,27 +664,36 @@ static int parse_section_header(SectionHeader *h,
 {
     int val;
 
-    val = get8(pp, p_end);                          // table id: 8 bits
+    val = get8(pp, p_end);           // table id: 8 bits
     if (val < 0)
         return val;
-    h->tid = val;
+    h->tid = val;                    av_log(NULL, AV_LOG_ERROR, "Tabe ID: %d\n", val);
+    {
+        #if 0
+        val = AV_RB16(*pp);
+        av_log(NULL, AV_LOG_ERROR, "Section syntax indicator: %d\n", (val & 0x8000) >> 15); // LT: 1bit
+        av_log(NULL, AV_LOG_ERROR, "'0': %d\n", val & 0x4000);                          // LT: 1bit
+        av_log(NULL, AV_LOG_ERROR, "Reserved: %d\n", val & 0x3000);                     // LT: 2bit
+        av_log(NULL, AV_LOG_ERROR, "Section len: %d\n", val & 0x1fff);
+        #endif
+    }        
     *pp += 2;
-    val  = get16(pp, p_end);
+    val  = get16(pp, p_end);            
     if (val < 0)
         return val;
-    h->id = val;
+    h->id = val;                       // av_log(NULL, AV_LOG_ERROR, "ts stream ID: %d\n", val);
     val = get8(pp, p_end);
     if (val < 0)
         return val;
-    h->version = (val >> 1) & 0x1f;
+    h->version = (val >> 1) & 0x1f;    // av_log(NULL, AV_LOG_ERROR, "version: %d\n", h->version);    
     val = get8(pp, p_end);
     if (val < 0)
         return val;
-    h->sec_num = val;
+    h->sec_num = val;                  // av_log(NULL, AV_LOG_ERROR, "Section num: %d\n", h->sec_num);
     val = get8(pp, p_end);
     if (val < 0)
         return val;
-    h->last_sec_num = val;
+    h->last_sec_num = val;             // av_log(NULL, AV_LOG_ERROR, "last sec num: %d\n", h->last_sec_num);             
     return 0;
 }
 
@@ -1961,7 +1970,7 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
     Mp4Descr mp4_descr[MAX_MP4_DESCR_COUNT] = { { 0 } };
     int i;
 
-    // av_log(ts->stream, AV_LOG_FATAL, "PMT: len %i\n", section_len);
+    // av_log(ts->stream, AV_LOG_FATAL, "pmt_cb:  len %i\n", section_len);
     hex_dump_debug(ts->stream, section, section_len);
 
     p_end = section + section_len - 4;
@@ -2041,6 +2050,7 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
         if (pid < 0)
             goto out;
         pid &= 0x1fff;
+        av_log(NULL, AV_LOG_ERROR, "mpegts: pid: %x, ts current pid: %d\n", pid, ts->current_pid);
         if (pid == ts->current_pid)
             goto out;
 
@@ -2124,6 +2134,7 @@ out:
         av_free(mp4_descr[i].dec_config_descr);
 }
 
+// Program association table
 static void pat_cb(MpegTSFilter *filter, const uint8_t *section, int section_len)
 {
     MpegTSContext *ts = filter->u.section_filter.opaque;
@@ -2135,16 +2146,17 @@ static void pat_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
 
     av_log(ts->stream, AV_LOG_INFO, "PAT callback, cur pos: %"PRId64"\nsection len: %d\n", 
            avio_tell(ts->stream->pb), section_len);
-    for (int i = 0; i < section_len; ++i) {
-        av_log(ts->stream, AV_LOG_INFO, "%x ", section[i]);    
+    {
+        for (int i = 0; i < section_len; ++i) {
+            av_log(ts->stream, AV_LOG_INFO, "%x ", section[i]);    
+        }
+        av_log(ts->stream, AV_LOG_INFO, "\n");
     }
-    av_log(ts->stream, AV_LOG_INFO, "\n");
-
     hex_dump_debug(ts->stream, section, section_len);
 
     p_end = section + section_len - 4;
     p     = section;
-    if (parse_section_header(h, &p, p_end) < 0)
+    if (parse_section_header(h, &p, p_end) < 0)             // header len: 8 bytes
         return;
     if (h->tid != PAT_TID)
         return;
@@ -2157,15 +2169,13 @@ static void pat_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
 
     clear_programs(ts);
     for (;;) {
-        sid = get16(&p, p_end);
+        sid = get16(&p, p_end);        av_log(NULL, AV_LOG_ERROR, "Program id: %d\n", sid); 
         if (sid < 0)
             break;
         pmt_pid = get16(&p, p_end);
         if (pmt_pid < 0)
             break;
-        pmt_pid &= 0x1fff;
-        av_log(NULL, AV_LOG_ERROR, "pmt pkt id: %x, %d\n", pmt_pid, pmt_pid);
-
+        pmt_pid &= 0x1fff;  av_log(NULL, AV_LOG_ERROR, "pmt pkt id: 0X%x == %d\n", pmt_pid, pmt_pid);
         if (pmt_pid == ts->current_pid)
             break;
 
@@ -2309,7 +2319,7 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
     int64_t pos;
 
     {
-        #if 1
+        #if 0
         int64_t cur_pos = avio_tell(ts->stream->pb);
         av_log(NULL, AV_LOG_INFO, "Cur url pos: %"PRId64"\n", cur_pos);
         if (0x47 != *packet) {          // Sync flag byte  8 bits
@@ -2372,12 +2382,12 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
 
     has_adaptation   = afc & 2;
     has_payload      = afc & 1;
-    av_log(NULL, AV_LOG_ERROR, "adaptation: %d, payload: %d\n", has_adaptation, has_payload);
+    // av_log(NULL, AV_LOG_ERROR, "adaptation: %d, payload: %d\n", has_adaptation, has_payload);
 
     is_discontinuity = has_adaptation &&
                        packet[4] != 0 &&   /* with length > 0 */
                        (packet[5] & 0x80); /* and discontinuity indicated */
-    av_log(NULL, AV_LOG_FATAL, "Is discontinuity: %d\n", is_discontinuity);
+    // av_log(NULL, AV_LOG_FATAL, "Is discontinuity: %d\n", is_discontinuity);
 
     /* continuity check (currently not used) */
     cc = (packet[3] & 0xf);
@@ -2386,7 +2396,7 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
             is_discontinuity ||
             tss->last_cc < 0 ||
             expected_cc == cc;
-    av_log(NULL, AV_LOG_FATAL, "cc: %d, expected cc: %d, cc_ok: %d\n", cc, expected_cc, cc_ok);
+    // av_log(NULL, AV_LOG_FATAL, "cc: %d, expected cc: %d, cc_ok: %d\n", cc, expected_cc, cc_ok);
 
     tss->last_cc = cc;
     if (!cc_ok) {
@@ -2457,8 +2467,7 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
             }
         }
 
-        if (PAT_PID == pid)
-            AVFMT_CRASH();
+        // if (PAT_PID == pid) AVFMT_CRASH();
         // stop find_stream_info from waiting for more streams
         // when all programs have received a PMT
         if (ts->stream->ctx_flags & AVFMTCTX_NOHEADER && ts->scan_all_pmts <= 0) {

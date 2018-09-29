@@ -36,3 +36,10 @@
 /lcov/
 /src
 /mapfile
+._.DS_Store
+._lt_config.sh
+ffbuild/._.DS_Store
+ffbuild/._libversion.sh
+ffbuild/._pkgconfig_generate.sh
+libavformat/._.DS_Store
+libavformat/vocenc.o-f62a84e8

@@ -557,6 +557,8 @@ static int http_open(URLContext *h, const char *uri, int flags,
     if (s->listen) {
         return http_listen(h, uri, flags, options);
     }
+
+    av_log(NULL, AV_LOG_ERROR, "[%s:%d]\n", __FILE__, __LINE__);
     ret = http_open_cnx(h, options);
     if (ret < 0)
         av_dict_free(&s->chained_options);
@@ -606,6 +608,7 @@ static int http_get_line(HTTPContext *s, char *line, int line_size)
     int ch;
     char *q;
 
+    // av_log(NULL, AV_LOG_WARNING, "+ %s()\n", __FUNCTION__); AVFMT_CRASH();
     q = line;
     for (;;) {
         ch = http_getc(s);
@@ -623,6 +626,8 @@ static int http_get_line(HTTPContext *s, char *line, int line_size)
                 *q++ = ch;
         }
     }
+
+    av_log(NULL, AV_LOG_ERROR, "http_get_line: %s\n", line);
 }
 
 static int check_http_code(URLContext *h, int http_code, const char *end)
@@ -1129,7 +1134,7 @@ static int http_read_header(URLContext *h, int *new_location)
         if ((err = http_get_line(s, line, sizeof(line))) < 0)
             return err;
 
-        av_log(h, AV_LOG_TRACE, "header='%s'\n", line);
+        av_log(h, AV_LOG_INFO, "header='%s'\n", line);
 
         err = process_line(h, line, s->line_count, new_location);
         if (err < 0)
@@ -1162,6 +1167,8 @@ static int http_connect(URLContext *h, const char *path, const char *local_path,
     const char *method;
     int send_expect_100 = 0;
     int ret;
+
+    av_log(NULL, AV_LOG_ERROR, "+ %s()\npath: %s\n", __FUNCTION__, path);
 
     /* send http header */
     post = h->flags & AVIO_FLAG_WRITE;
@@ -1339,7 +1346,10 @@ static int http_buf_read(URLContext *h, uint8_t *buf, int size)
     HTTPContext *s = h->priv_data;
     int len;
 
+    // av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);
     if (s->chunksize != UINT64_MAX) {
+        av_log(NULL, AV_LOG_WARNING, "Http ctx chunksize: %"PRIu64"\n", s->chunksize);
+        AVFMT_CRASH();
         if (s->chunkend) {
             return AVERROR_EOF;
         }
@@ -1380,11 +1390,14 @@ static int http_buf_read(URLContext *h, uint8_t *buf, int size)
     /* read bytes from input buffer first */
     len = s->buf_end - s->buf_ptr;
     if (len > 0) {
+        // av_log(NULL, AV_LOG_WARNING, "Read data from http buf firstly, len: %d\n", len); 
+        // AVFMT_CRASH();
         if (len > size)
             len = size;
         memcpy(buf, s->buf_ptr, len);
         s->buf_ptr += len;
     } else {
+        // av_log(NULL, AV_LOG_WARNING, "Read data from url: %s\n", s->hd->filename); // AVFMT_CRASH();
         uint64_t target_end = s->end_off ? s->end_off : s->filesize;
         if ((!s->willclose || s->chunksize == UINT64_MAX) && s->off >= target_end)
             return AVERROR_EOF;
@@ -1404,6 +1417,14 @@ static int http_buf_read(URLContext *h, uint8_t *buf, int size)
             s->chunksize -= len;
         }
     }
+
+    // av_log(NULL, AV_LOG_ERROR, "- %s() len: %d\n", __FUNCTION__, len);
+    #if 0
+    for (int i = 0; i < size; ++i) {
+        av_log(NULL, AV_LOG_ERROR, "%x ", buf[i]);    
+    }
+    av_log(NULL, AV_LOG_ERROR, "\n");
+    #endif
     return len;
 }
 
@@ -1459,8 +1480,11 @@ static int http_read_stream(URLContext *h, uint8_t *buf, int size)
     }
 
 #if CONFIG_ZLIB
-    if (s->compressed)
+    // av_log(NULL, AV_LOG_WARNING, "Configed ZLIB\n");
+    if (s->compressed) {
+        AVFMT_CRASH();
         return http_buf_read_compressed(h, buf, size);
+    }
 #endif /* CONFIG_ZLIB */
     read_ret = http_buf_read(h, buf, size);
     while (read_ret < 0) {
@@ -1484,6 +1508,7 @@ static int http_read_stream(URLContext *h, uint8_t *buf, int size)
         if (err != AVERROR(ETIMEDOUT))
             return err;
         reconnect_delay = 1 + 2*reconnect_delay;
+        av_log(NULL, AV_LOG_ERROR, "[%s:%d]Do http seek\n", __FILE__, __LINE__);
         seek_ret = http_seek_internal(h, target, SEEK_SET, 1);
         if (seek_ret >= 0 && seek_ret != target) {
             av_log(h, AV_LOG_ERROR, "Failed to reconnect at %"PRIu64".\n", target);
@@ -1663,6 +1688,7 @@ static int64_t http_seek_internal(URLContext *h, int64_t off, int whence, int fo
     int old_buf_size, ret;
     AVDictionary *options = NULL;
 
+    av_log(NULL, AV_LOG_ERROR, "+ %s() \noff: %"PRId64"\n", __FUNCTION__, off);
     if (whence == AVSEEK_SIZE)
         return s->filesize;
     else if (!force_reconnect &&
@@ -1707,6 +1733,7 @@ static int64_t http_seek_internal(URLContext *h, int64_t off, int whence, int fo
 
 static int64_t http_seek(URLContext *h, int64_t off, int whence)
 {
+    av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);
     return http_seek_internal(h, off, whence, 0);
 }
 

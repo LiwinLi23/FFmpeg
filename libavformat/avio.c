@@ -221,6 +221,8 @@ int ffurl_connect(URLContext *uc, AVDictionary **options) {
     if ((uc->flags & AVIO_FLAG_WRITE) || !strcmp(uc->prot->name, "file"))
         if (!uc->is_streamed && ffurl_seek(uc, 0, SEEK_SET) < 0)
             uc->is_streamed = 1;
+
+    av_log(NULL, AV_LOG_INFO, "- %s()\n", __FUNCTION__);
     return 0;
 }
 
@@ -308,7 +310,7 @@ int ffurl_open_whitelist(URLContext **puc, const char *filename, int flags,
 {
     AVDictionary *tmp_opts = NULL;
     AVDictionaryEntry *e;
-    av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
+    // av_log(NULL, AV_LOG_INFO, "+ %s()\n", __FUNCTION__);
     av_log(NULL, AV_LOG_INFO, "[%s] + %s()\nfilename: %s\nflags: %d\n"
            "int_cb: %x\noptions count: %d\nwhitelist: %x, blacklist: %x, parent: %x\n" ,
             __FILE__, __FUNCTION__, filename, flags, int_cb->callback, av_dict_count(*options), 
@@ -448,6 +450,7 @@ int64_t ffurl_seek(URLContext *h, int64_t pos, int whence)
 {
     int64_t ret;
 
+    av_log(NULL, AV_LOG_ERROR, "+ %s()pos: %"PRId64", whence: %x\n", __FUNCTION__, pos, whence);
     if (!h->prot->url_seek)
         return AVERROR(ENOSYS);
     ret = h->prot->url_seek(h, pos, whence & ~AVSEEK_FORCE);
@@ -625,6 +628,7 @@ int64_t ffurl_size(URLContext *h)
 {
     int64_t pos, size;
 
+    av_log(NULL, AV_LOG_ERROR, "+ %s()\n", __FUNCTION__);
     size = ffurl_seek(h, 0, AVSEEK_SIZE);
     if (size < 0) {
         pos = ffurl_seek(h, 0, SEEK_CUR);
